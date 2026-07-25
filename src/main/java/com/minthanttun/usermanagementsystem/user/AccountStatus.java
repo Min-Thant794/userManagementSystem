@@ -1,4 +1,6 @@
 package com.minthanttun.usermanagementsystem.user;
 
-public class AccountStatus {
+public enum AccountStatus {
+    ACTIVE,
+    SUSPENDED
 }

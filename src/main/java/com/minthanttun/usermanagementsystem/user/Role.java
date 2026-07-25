@@ -1,4 +1,6 @@
 package com.minthanttun.usermanagementsystem.user;
 
-public class Role {
+public enum Role {
+    USER,
+    ADMIN
 }
