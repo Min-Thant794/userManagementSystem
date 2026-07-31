@@ -1,9 +1,6 @@
 package com.minthanttun.usermanagementsystem.auth;
 
-import com.minthanttun.usermanagementsystem.auth.dto.AuthResponse;
-import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
-import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
-import com.minthanttun.usermanagementsystem.auth.dto.UserResponse;
+import com.minthanttun.usermanagementsystem.auth.dto.*;
 import com.minthanttun.usermanagementsystem.user.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,5 +26,16 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

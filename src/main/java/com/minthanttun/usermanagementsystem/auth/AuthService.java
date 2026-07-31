@@ -9,6 +9,7 @@ import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsE
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -95,5 +96,53 @@ public class AuthService {
         refreshTokenRepository.save(tokenEntity);
 
         return AuthResponse.of(accessToken, refreshToken, refreshTokenExpiryMs);
+    }
+
+    @Transactional
+    public AuthResponse refresh(String rawRefreshToken) {
+        String hash = tokenHasher.hash(rawRefreshToken);
+
+        RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
+
+        if (tokenEntity.isRevoked()) {
+            throw new InvalidCredentialsException("Refresh token has been revoked");
+        }
+
+        if (tokenEntity.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new InvalidCredentialsException("Refresh token has expired");
+        }
+
+        User user = tokenEntity.getUser();
+        if (user.getStatus() == AccountStatus.SUSPENDED) {
+            throw new AccountSuspendedException("This account has been suspended");
+        }
+
+        //Rotate: revoke the old refresh token, issue a brand new pair
+        tokenEntity.setRevoked(true);
+        refreshTokenRepository.save(tokenEntity);
+
+        String newAccessToken = jwtService.generateAccessToken(user);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+
+        RefreshToken newTokenEntity = RefreshToken.builder()
+                .user(user)
+                .tokenHash(tokenHasher.hash(newRefreshToken))
+                .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(newTokenEntity);
+
+        return AuthResponse.of(newAccessToken, newRefreshToken, refreshTokenExpiryMs);
+    }
+
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        String hash = tokenHasher.hash(rawRefreshToken);
+
+        refreshTokenRepository.findByTokenHash(hash).ifPresent(token -> {
+            token.setRevoked(true);
+            refreshTokenRepository.save(token);
+        });
     }
 }
