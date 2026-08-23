@@ -45,4 +45,18 @@ public class GlobalExceptionHandler {
         problem.setTitle("Account Suspended");
         return problem;
     }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Resource Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(LastAdminException.class)
+    public ProblemDetail handleLastAdmin(LastAdminException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Cannot Remove Last Admin");
+        return problem;
+    }
 }
