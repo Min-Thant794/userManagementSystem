@@ -54,4 +54,8 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    public boolean isProfileComplete() {
+        return username != null && phoneNumber != null;
+    }
 }

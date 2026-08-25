@@ -1,10 +1,9 @@
 package com.minthanttun.usermanagementsystem.user;
 
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
-import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
-import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
-import com.minthanttun.usermanagementsystem.user.dto.UpdateProfileRequest;
-import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
+import com.minthanttun.usermanagementsystem.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -49,5 +48,14 @@ public class UserController {
     ) {
         userService.setInitialPassword(userDetails.getUser(), request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/complete-profile")
+    public UserResponse completeProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody CompleteProfileRequest request
+    ) {
+        User updated = userService.completeProfile(userDetails.getUser(), request);
+        return UserResponse.from(updated);
     }
 }

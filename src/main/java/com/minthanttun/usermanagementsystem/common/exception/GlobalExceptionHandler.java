@@ -59,4 +59,12 @@ public class GlobalExceptionHandler {
         problem.setTitle("Cannot Remove Last Admin");
         return problem;
     }
+
+    @ExceptionHandler(ProfileIncompleteException.class)
+    public ProblemDetail handleProfileIncomplete(ProfileIncompleteException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Profile Incomplete");
+        problem.setProperty("action", "complete_profile");
+        return problem;
+    }
 }

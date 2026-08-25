@@ -66,6 +66,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
+            if (!customUserDetails.getUser().isProfileComplete()
+                    && !request.getRequestURI().equals("/api/users/me/complete-profile")) {
+                request.setAttribute("auth_error", "PROFILE_INCOMPLETE");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             var authToken = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities()
             );

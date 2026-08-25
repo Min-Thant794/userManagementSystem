@@ -2,7 +2,9 @@ package com.minthanttun.usermanagementsystem.user;
 
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
+import com.minthanttun.usermanagementsystem.user.dto.CompleteProfileRequest;
 import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
 import com.minthanttun.usermanagementsystem.user.dto.UpdateProfileRequest;
 import lombok.RequiredArgsConstructor;
@@ -66,5 +68,24 @@ public class UserService {
 
         currentUser.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(currentUser);
+    }
+
+    @Transactional
+    public User completeProfile(User user, CompleteProfileRequest request) {
+        if (user.isProfileComplete()) {
+            throw new ProfileIncompleteException("Profile is already complete");
+        }
+
+        if (userRepository.existsByUsername(request.username())) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+
+        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new DuplicateResourceException("Phone number is already registered");
+        }
+
+        user.setUsername(request.username());
+        user.setPhoneNumber(request.phoneNumber());
+        return userRepository.save(user);
     }
 }

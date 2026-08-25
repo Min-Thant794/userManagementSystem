@@ -35,6 +35,11 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                     HttpStatus.FORBIDDEN, "This account has been suspended");
             problem.setTitle("Account Suspended");
             response.setStatus(HttpStatus.FORBIDDEN.value());
+        } else if ("PROFILE_INCOMPLETE".equals(authError)) {
+            problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Please complete your profile before continuing");
+            problem.setTitle("Profile Incomplete");
+            problem.setProperty("action", "complete_profile");
+            response.setStatus(HttpStatus.FORBIDDEN.value());
         } else {
             problem = ProblemDetail.forStatusAndDetail(
                     HttpStatus.UNAUTHORIZED, "Authentication is required to access this resource");
