@@ -7,13 +7,12 @@ import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedExc
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
-import com.minthanttun.usermanagementsystem.security.jwt.JwtService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -29,15 +28,13 @@ import java.time.OffsetDateTime;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final LoginAttemptService loginAttemptService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
     private final TokenHasher tokenHasher;
     private final RefreshTokenRepository refreshTokenRepository;
-
-    @Value("${app.jwt.refresh-token-expiry-ms}")
-    private long refreshTokenExpiryMs;
+    private final TokenIssuer tokenIssuer;
 
     @Transactional
     public User signup(SignupRequest request) {
@@ -63,12 +60,10 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        // Resolve identifier to an actual username, since AuthenticationManager
-        // authenticates by username under the hood (via CustomUserDetailsService).
         String resolvedUsername = userRepository.findByUsername(request.identifier())
                 .or(() -> userRepository.findByEmail(request.identifier()))
                 .map(User::getUsername)
-                .orElse(request.identifier()); // let it fail naturally below if truly not found
+                .orElse(request.identifier());
 
         CustomUserDetails userDetails;
         try {
@@ -77,25 +72,21 @@ public class AuthService {
             );
             userDetails = (CustomUserDetails) authentication.getPrincipal();
         } catch (DisabledException | LockedException e) {
-            throw new AccountSuspendedException("This account has been suspended");
+            throw new AccountSuspendedException("This account has been suspended or is temporarily locked");
         } catch (BadCredentialsException e) {
+            loginAttemptService.recordFailedAttempt(resolvedUsername);
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
+        // Successful login — reset the counter.
         User user = userDetails.getUser();
+        if (user.getFailedLoginAttempts() > 0) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
 
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
-
-        RefreshToken tokenEntity = RefreshToken.builder()
-                .user(user)
-                .tokenHash(tokenHasher.hash(refreshToken))
-                .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
-                .revoked(false)
-                .build();
-        refreshTokenRepository.save(tokenEntity);
-
-        return AuthResponse.of(accessToken, refreshToken, refreshTokenExpiryMs);
+        return tokenIssuer.issueTokenPair(user);
     }
 
     @Transactional
@@ -118,22 +109,11 @@ public class AuthService {
             throw new AccountSuspendedException("This account has been suspended");
         }
 
-        //Rotate: revoke the old refresh token, issue a brand new pair
+        // Rotate: revoke the old refresh token, issue a brand new pair.
         tokenEntity.setRevoked(true);
         refreshTokenRepository.save(tokenEntity);
 
-        String newAccessToken = jwtService.generateAccessToken(user);
-        String newRefreshToken = jwtService.generateRefreshToken(user);
-
-        RefreshToken newTokenEntity = RefreshToken.builder()
-                .user(user)
-                .tokenHash(tokenHasher.hash(newRefreshToken))
-                .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
-                .revoked(false)
-                .build();
-        refreshTokenRepository.save(newTokenEntity);
-
-        return AuthResponse.of(newAccessToken, newRefreshToken, refreshTokenExpiryMs);
+        return tokenIssuer.issueTokenPair(user);
     }
 
     @Transactional

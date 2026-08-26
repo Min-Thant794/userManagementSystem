@@ -23,7 +23,7 @@ public class AuditService {
         }
 
         AuditLog entry = AuditLog.builder()
-                .actorUserid(actorUserId)
+                .actorUserId(actorUserId)
                 .targetUserId(targetUserId)
                 .action(action)
                 .details(detailsJson)

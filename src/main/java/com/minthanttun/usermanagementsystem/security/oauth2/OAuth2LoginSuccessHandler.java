@@ -1,9 +1,7 @@
 package com.minthanttun.usermanagementsystem.security.oauth2;
 
-import com.minthanttun.usermanagementsystem.security.jwt.JwtService;
-import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
-import com.minthanttun.usermanagementsystem.auth.RefreshToken;
-import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
+import com.minthanttun.usermanagementsystem.auth.dto.AuthResponse;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
 import com.minthanttun.usermanagementsystem.user.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,21 +14,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
 
 @Component
 @RequiredArgsConstructor
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final JwtService jwtService;
-    private final TokenHasher tokenHasher;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenIssuer tokenIssuer;
 
     @Value("${app.oauth2.frontend-redirect-uri}")
     private String frontendRedirectUri;
-
-    @Value("${app.jwt.refresh-token-expiry-ms}")
-    private long refreshTokenExpiryMs;
 
     @Override
     public void onAuthenticationSuccess(
@@ -42,20 +34,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = oAuth2User.getUser();
 
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
-
-        RefreshToken tokenEntity = RefreshToken.builder()
-                .user(user)
-                .tokenHash(tokenHasher.hash(refreshToken))
-                .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
-                .revoked(false)
-                .build();
-        refreshTokenRepository.save(tokenEntity);
+        AuthResponse tokens = tokenIssuer.issueTokenPair(user);
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
-                .queryParam("accessToken", accessToken)
-                .queryParam("refreshToken", refreshToken)
+                .queryParam("accessToken", tokens.accessToken())
+                .queryParam("refreshToken", tokens.refreshToken())
                 .queryParam("profileComplete", user.isProfileComplete())
                 .build().toUriString();
 

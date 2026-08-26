@@ -41,7 +41,21 @@ public class AdminUserService {
     public User updateUser(UUID id, AdminUpdateUserRequest request) {
         User user = getUser(id);
 
-        if (request.username() != null && !request.email().equals(user.getEmail())) {
+        if (request.username() != null && !request.username().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.username())) {
+                throw new DuplicateResourceException("Username is already taken");
+            }
+            user.setUsername(request.username());
+        }
+
+        if (request.email() != null && !request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
+                throw new DuplicateResourceException("Email is already registered");
+            }
+            user.setEmail(request.email());
+        }
+
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
             if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
                 throw new DuplicateResourceException("Phone number is already registered");
             }
