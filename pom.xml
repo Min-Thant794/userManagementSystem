@@ -80,6 +80,12 @@
 			<version>1.79</version>
 		</dependency>
 
+		<!-- SMTP -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Dev tooling -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

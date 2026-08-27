@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
@@ -36,6 +37,18 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.forgotPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
         return ResponseEntity.noContent().build();
     }
 }
