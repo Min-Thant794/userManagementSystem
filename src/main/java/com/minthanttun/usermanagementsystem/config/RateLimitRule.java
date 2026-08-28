@@ -5,7 +5,9 @@ public record RateLimitRule (
         int capacity,
         int refillTokens,
         long refillPeriodSeconds,
-        KeyType keyType
+        KeyType keyType,
+        RefillStrategy refillStrategy
 ) {
     public enum KeyType { IP, USER }
+    public enum RefillStrategy { GREEDY, INTERVALLY }
 }

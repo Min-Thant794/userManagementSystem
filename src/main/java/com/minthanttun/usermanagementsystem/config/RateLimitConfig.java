@@ -7,6 +7,8 @@ import java.util.List;
 
 import static com.minthanttun.usermanagementsystem.config.RateLimitRule.KeyType.IP;
 import static com.minthanttun.usermanagementsystem.config.RateLimitRule.KeyType.USER;
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.RefillStrategy.GREEDY;
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.RefillStrategy.INTERVALLY;
 
 @Configuration
 public class RateLimitConfig {
@@ -14,12 +16,13 @@ public class RateLimitConfig {
     @Bean
     public List<RateLimitRule> rateLimitRules() {
         return List.of(
-                new RateLimitRule("/api/auth/login", 5, 5, 60, IP),
-                new RateLimitRule("/api/auth/signup", 5, 5, 60, IP),
-                new RateLimitRule("/api/auth/forgot-password", 5, 5, 60, IP),
-                new RateLimitRule("/api/auth/reset-password", 5, 5, 60, IP),
-                new RateLimitRule("/api/users/**", 100, 100, 60, USER),
-                new RateLimitRule("/api/admin/**", 100, 100, 60, USER)
+                new RateLimitRule("/api/auth/login", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/signup", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/forgot-password", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/reset-password", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/refresh", 20, 20, 60, USER, GREEDY),
+                new RateLimitRule("/api/users/**", 100, 100, 60, USER, GREEDY),
+                new RateLimitRule("/api/admin/**", 100, 100, 60, USER, GREEDY)
         );
     }
 

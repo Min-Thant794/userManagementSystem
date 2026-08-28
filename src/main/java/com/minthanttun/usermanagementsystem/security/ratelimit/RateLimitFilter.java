@@ -32,7 +32,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final Bucket globalBucket = buildBucket(
             RateLimitConfig.GLOBAL_CAPACITY,
             RateLimitConfig.GLOBAL_CAPACITY,
-            RateLimitConfig.GLOBAL_REFILL_PERIOD_SECONDS
+            RateLimitConfig.GLOBAL_REFILL_PERIOD_SECONDS,
+            RateLimitRule.RefillStrategy.GREEDY
     );
 
     @Override
@@ -54,7 +55,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             String key = resolveKey(request, matchedRule.keyType());
             Bucket bucket = endpointBuckets.computeIfAbsent(
                     matchedRule.pathPattern() + ":" + key,
-                    k -> buildBucket(matchedRule.capacity(), matchedRule.refillTokens(), matchedRule.refillPeriodSeconds())
+                    k -> buildBucket(matchedRule.capacity(), matchedRule.refillTokens(),
+                            matchedRule.refillPeriodSeconds(), matchedRule.refillStrategy())
             );
 
             if (!bucket.tryConsume(1)) {
@@ -84,11 +86,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return "ip:" + request.getRemoteAddr();
     }
 
-    private Bucket buildBucket(int capacity, int refillTokens, long refillPeriodSeconds) {
+    private Bucket buildBucket(int capacity, int refillTokens, long refillPeriodSeconds,
+                               RateLimitRule.RefillStrategy strategy) {
         return Bucket.builder()
-                .addLimit(limit -> limit
-                        .capacity(capacity)
-                        .refillGreedy(refillTokens, Duration.ofSeconds(refillPeriodSeconds)))
+                .addLimit(limit -> {
+                    var capacityStage = limit.capacity(capacity);
+                    if (strategy == RateLimitRule.RefillStrategy.INTERVALLY) {
+                        return capacityStage.refillIntervally(refillTokens, Duration.ofSeconds(refillPeriodSeconds));
+                    } else {
+                        return capacityStage.refillGreedy(refillTokens, Duration.ofSeconds(refillPeriodSeconds));
+                    }
+                })
                 .build();
     }
 
