@@ -4,6 +4,7 @@ import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthFilter;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthenticationEntryPoint;
 import com.minthanttun.usermanagementsystem.security.oauth2.CustomOidcUserService;
 import com.minthanttun.usermanagementsystem.security.oauth2.OAuth2LoginSuccessHandler;
+import com.minthanttun.usermanagementsystem.security.ratelimit.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -34,6 +35,7 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final RateLimitFilter rateLimitFilter;
 
     @Value("${app.cors.allowed-origins}")
     private String[] allowedOrigins;
@@ -76,7 +78,8 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(customOidcUserService))
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }
