@@ -1,6 +1,5 @@
 package com.minthanttun.usermanagementsystem.auth;
 
-import com.minthanttun.usermanagementsystem.auth.dto.AuthResponse;
 import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
 import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedException;
@@ -59,7 +58,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public TokenIssuer.IssuedTokens login(LoginRequest request) {
         String resolvedUsername = userRepository.findByUsername(request.identifier())
                 .or(() -> userRepository.findByEmail(request.identifier()))
                 .map(User::getUsername)
@@ -78,7 +77,6 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        // Successful login — reset the counter.
         User user = userDetails.getUser();
         if (user.getFailedLoginAttempts() > 0) {
             user.setFailedLoginAttempts(0);
@@ -90,7 +88,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse refresh(String rawRefreshToken) {
+    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken) {
         String hash = tokenHasher.hash(rawRefreshToken);
 
         RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)

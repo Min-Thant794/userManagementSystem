@@ -1,6 +1,5 @@
 package com.minthanttun.usermanagementsystem.security.jwt;
 
-import com.minthanttun.usermanagementsystem.auth.dto.AuthResponse;
 import com.minthanttun.usermanagementsystem.auth.RefreshToken;
 import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
 import com.minthanttun.usermanagementsystem.user.User;
@@ -22,8 +21,10 @@ public class TokenIssuer {
     @Value("${app.jwt.refresh-token-expiry-ms}")
     private long refreshTokenExpiryMs;
 
+    public record IssuedTokens(String accessToken, String refreshToken, long refreshTokenExpiryMs) {}
+
     @Transactional
-    public AuthResponse issueTokenPair(User user) {
+    public IssuedTokens issueTokenPair(User user) {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
@@ -35,6 +36,6 @@ public class TokenIssuer {
                 .build();
         refreshTokenRepository.save(tokenEntity);
 
-        return AuthResponse.of(accessToken, refreshToken, refreshTokenExpiryMs);
+        return new IssuedTokens(accessToken, refreshToken, refreshTokenExpiryMs);
     }
 }

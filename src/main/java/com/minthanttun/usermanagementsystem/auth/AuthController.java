@@ -1,7 +1,9 @@
 package com.minthanttun.usermanagementsystem.auth;
 
 import com.minthanttun.usermanagementsystem.auth.dto.*;
+import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
 import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,11 +13,11 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-
 public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final CookieUtil cookieUtil;
 
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
@@ -24,19 +26,31 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        var tokens = authService.login(request);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
+        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = "refreshToken") String refreshToken,
+            HttpServletResponse response
+    ) {
+        var tokens = authService.refresh(refreshToken);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
+        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
-        authService.logout(request.refreshToken());
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response
+    ) {
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+        cookieUtil.clearRefreshTokenCookie(response);
         return ResponseEntity.noContent().build();
     }
 

@@ -1,6 +1,6 @@
 package com.minthanttun.usermanagementsystem.security.oauth2;
 
-import com.minthanttun.usermanagementsystem.auth.dto.AuthResponse;
+import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
 import com.minthanttun.usermanagementsystem.user.User;
 import jakarta.servlet.ServletException;
@@ -20,6 +20,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final TokenIssuer tokenIssuer;
+    private final CookieUtil cookieUtil;
 
     @Value("${app.oauth2.frontend-redirect-uri}")
     private String frontendRedirectUri;
@@ -34,11 +35,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = oAuth2User.getUser();
 
-        AuthResponse tokens = tokenIssuer.issueTokenPair(user);
+        var tokens = tokenIssuer.issueTokenPair(user);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
-                .queryParam("accessToken", tokens.accessToken())
-                .queryParam("refreshToken", tokens.refreshToken())
                 .queryParam("profileComplete", user.isProfileComplete())
                 .build().toUriString();
 
