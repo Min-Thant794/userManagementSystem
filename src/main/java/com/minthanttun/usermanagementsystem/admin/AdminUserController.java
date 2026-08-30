@@ -44,8 +44,12 @@ public class AdminUserController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public AdminUserResponse updateUser(@PathVariable UUID id, @Valid @RequestBody AdminUpdateUserRequest request) {
-        User updated = adminUserService.updateUser(id, request);
+    public AdminUserResponse updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdminUpdateUserRequest request,
+            @AuthenticationPrincipal CustomUserDetails actor
+    ) {
+        User updated = adminUserService.updateUser(id, request, actor.getUser());
         return AdminUserResponse.from(updated);
     }
 

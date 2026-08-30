@@ -46,17 +46,21 @@ public class AdminUserService {
     }
 
     @Transactional
-    public User updateUser(UUID id, AdminUpdateUserRequest request) {
+    public User updateUser(UUID id, AdminUpdateUserRequest request, User actor) {
         User user = getUser(id);
 
-        if (request.username() != null && !request.username().equals(user.getUsername())) {
+        String beforeUsername = user.getUsername();
+        String beforeEmail = user.getEmail();
+        String beforePhoneNumber = user.getPhoneNumber();
+
+        if(request.username() != null && !request.username().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.username())) {
                 throw new DuplicateResourceException("Username is already taken");
             }
             user.setUsername(request.username());
         }
 
-        if (request.email() != null && !request.email().equals(user.getEmail())) {
+        if(request.email() != null && !request.email().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.email())) {
                 throw new DuplicateResourceException("Email is already registered");
             }
@@ -64,13 +68,39 @@ public class AdminUserService {
         }
 
         if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
-            if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            if (userRepository.existsByEmail(request.phoneNumber())) {
                 throw new DuplicateResourceException("Phone number is already registered");
             }
             user.setPhoneNumber(request.phoneNumber());
         }
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        boolean actuallyChanged = !beforeUsername.equals(saved.getUsername())
+                || !beforeEmail.equals(saved.getEmail())
+                || !java.util.Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
+
+        if (actuallyChanged) {
+            auditService.log(
+                    actor.getId(),
+                    saved.getId(),
+                    AuditAction.UPDATE,
+                    Map.of(
+                            "before", Map.of(
+                                    "username", beforeUsername,
+                                    "email", beforeEmail,
+                                    "phoneNumber", beforePhoneNumber == null ? "" : beforePhoneNumber
+                            ),
+                            "after", Map.of(
+                                    "username", saved.getUsername(),
+                                    "email", saved.getEmail(),
+                                    "phoneNumber", saved.getPhoneNumber() == null ? "" : saved.getPhoneNumber()
+                            )
+                    )
+            );
+        }
+
+        return saved;
     }
 
     @Transactional
