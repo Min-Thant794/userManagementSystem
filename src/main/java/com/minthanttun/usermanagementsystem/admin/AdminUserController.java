@@ -1,11 +1,10 @@
 package com.minthanttun.usermanagementsystem.admin;
 
-import com.minthanttun.usermanagementsystem.admin.dto.AdminUpdateUserRequest;
-import com.minthanttun.usermanagementsystem.admin.dto.ChangeRoleRequest;
-import com.minthanttun.usermanagementsystem.admin.dto.ChangeStatusRequest;
-import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
+import com.minthanttun.usermanagementsystem.admin.dto.*;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.Role;
 import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +27,14 @@ public class AdminUserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Page<UserResponse> listUsers(Pageable pageable) {
-        return adminUserService.listUsers(pageable).map(UserResponse::from);
+    public Page<UserResponse> listUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) AccountStatus status,
+            Pageable pageable
+    ) {
+        UserSearchCriteria criteria = new UserSearchCriteria(search, role, status);
+        return adminUserService.listUsers(criteria, pageable).map(UserResponse::from);
     }
 
     @GetMapping("/{id}")

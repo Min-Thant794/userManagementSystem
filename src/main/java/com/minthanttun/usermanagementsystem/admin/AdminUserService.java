@@ -2,6 +2,7 @@ package com.minthanttun.usermanagementsystem.admin;
 
 import com.minthanttun.usermanagementsystem.admin.dto.AdminUpdateUserRequest;
 import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
+import com.minthanttun.usermanagementsystem.admin.dto.UserSearchCriteria;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
 import com.minthanttun.usermanagementsystem.audit.AuditService;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
@@ -14,6 +15,7 @@ import com.minthanttun.usermanagementsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +31,14 @@ public class AdminUserService {
     private final AuditService auditService;
     private final PasswordEncoder passwordEncoder;
 
-    public Page<User> listUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
+    public Page<User> listUsers(UserSearchCriteria criteria, Pageable pageable) {
+        Specification<User> spec = Specification.allOf(
+                UserSpecifications.matchesSearchTerm(criteria.search()),
+                UserSpecifications.hasRole(criteria.role()),
+                UserSpecifications.hasStatus(criteria.status())
+        );
+
+        return userRepository.findAll(spec, pageable);
     }
 
     public User getUser(UUID id) {
