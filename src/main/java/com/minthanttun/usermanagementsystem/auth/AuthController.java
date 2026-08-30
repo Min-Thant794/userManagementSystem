@@ -3,6 +3,7 @@ package com.minthanttun.usermanagementsystem.auth;
 import com.minthanttun.usermanagementsystem.auth.dto.*;
 import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
 import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

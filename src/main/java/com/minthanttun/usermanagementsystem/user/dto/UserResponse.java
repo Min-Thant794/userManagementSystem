@@ -9,12 +9,11 @@ public record UserResponse(
         UUID id,
         String username,
         String email,
-        String phoneNumber,
-        Role role
+        String phoneNumber
 ) {
     public static UserResponse from (User user) {
         return new UserResponse(
-                user.getId(), user.getUsername(), user.getEmail(), user.getPhoneNumber(), user.getRole()
+                user.getId(), user.getUsername(), user.getEmail(), user.getPhoneNumber()
         );
     }
 }

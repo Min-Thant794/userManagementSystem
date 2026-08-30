@@ -5,7 +5,6 @@ import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.Role;
-import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,58 +26,58 @@ public class AdminUserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Page<UserResponse> listUsers(
+    public Page<AdminUserResponse> listUsers(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Role role,
             @RequestParam(required = false) AccountStatus status,
             Pageable pageable
     ) {
         UserSearchCriteria criteria = new UserSearchCriteria(search, role, status);
-        return adminUserService.listUsers(criteria, pageable).map(UserResponse::from);
+        return adminUserService.listUsers(criteria, pageable).map(AdminUserResponse::from);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse getUsers(@PathVariable UUID id) {
-        return UserResponse.from(adminUserService.getUser(id));
+    public AdminUserResponse getUsers(@PathVariable UUID id) {
+        return AdminUserResponse.from(adminUserService.getUser(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateUser(@PathVariable UUID id, @Valid @RequestBody AdminUpdateUserRequest request) {
+    public AdminUserResponse updateUser(@PathVariable UUID id, @Valid @RequestBody AdminUpdateUserRequest request) {
         User updated = adminUserService.updateUser(id, request);
-        return UserResponse.from(updated);
+        return AdminUserResponse.from(updated);
     }
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateStatus(
+    public AdminUserResponse updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
-            ) {
+    ) {
         User updated = adminUserService.updateStatus(id, request.status(), actor.getUser());
-        return UserResponse.from(updated);
+        return AdminUserResponse.from(updated);
     }
 
     @PatchMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateRole(
+    public AdminUserResponse updateRole(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeRoleRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
-            ) {
+    ) {
         User updated = adminUserService.updateRole(id, request.role(), actor.getUser());
-        return UserResponse.from(updated);
+        return AdminUserResponse.from(updated);
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserResponse> createAdmin(
+    public ResponseEntity<AdminUserResponse> createAdmin(
             @Valid @RequestBody CreateAdminRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
-            ) {
+    ) {
         User created = adminUserService.createAdmin(request, actor.getUser());
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
+        return ResponseEntity.status(HttpStatus.CREATED).body(AdminUserResponse.from(created));
     }
 }
