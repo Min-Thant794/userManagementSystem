@@ -4,6 +4,7 @@ import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
 import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedException;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.EmailNotVerifiedException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class AuthService {
     private final TokenHasher tokenHasher;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TokenIssuer tokenIssuer;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public User signup(SignupRequest request) {
@@ -54,15 +57,26 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .build();
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        emailVerificationService.generateVerificationEmail(saved);
+
+        return saved;
     }
 
     @Transactional
     public TokenIssuer.IssuedTokens login(LoginRequest request) {
-        String resolvedUsername = userRepository.findByUsername(request.identifier())
-                .or(() -> userRepository.findByEmail(request.identifier()))
-                .map(User::getUsername)
-                .orElse(request.identifier());
+        Optional<User> maybeUser = userRepository.findByUsername(request.identifier())
+                .or(() -> userRepository.findByEmail(request.identifier()));
+
+        String resolvedUsername = maybeUser.map(User::getUsername).orElse(request.identifier());
+
+        // Block unverified accounts before checking the password at all — consistent
+        // with how suspended/locked accounts are already rejected ahead of credential
+        // verification, via Spring Security's own pre-authentication check ordering.
+        if (maybeUser.isPresent() && !maybeUser.get().isEmailVerified()) {
+            throw new EmailNotVerifiedException("Please verify your email address before logging in");
+        }
 
         CustomUserDetails userDetails;
         try {

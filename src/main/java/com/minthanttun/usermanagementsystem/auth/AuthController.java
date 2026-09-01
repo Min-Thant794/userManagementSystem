@@ -19,11 +19,24 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
     private final CookieUtil cookieUtil;
+    private final EmailVerificationService emailVerificationService;
 
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
         User created = authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verifyEmail(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        emailVerificationService.resendVerification(request.email());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/login")

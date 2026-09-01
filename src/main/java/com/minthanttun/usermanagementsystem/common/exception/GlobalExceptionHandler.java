@@ -67,4 +67,12 @@ public class GlobalExceptionHandler {
         problem.setProperty("action", "complete_profile");
         return problem;
     }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Email Not Verified");
+        problem.setProperty("action", "resend_verification");
+        return problem;
+    }
 }

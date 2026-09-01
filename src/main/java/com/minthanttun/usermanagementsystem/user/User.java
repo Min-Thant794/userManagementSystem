@@ -42,6 +42,10 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     @Builder.Default

@@ -45,6 +45,7 @@ public class CustomOidcUserService extends OidcUserService {
 
     private User linkOrCreateUser(String provider, String providerUserId, String email) {
         User user = userRepository.findByEmail(email)
+                .map(this::verifyIfNeeded)
                 .orElseGet(() -> createNewOAuthUser(email));
 
         OAuthAccount link = OAuthAccount.builder()
@@ -57,10 +58,21 @@ public class CustomOidcUserService extends OidcUserService {
         return user;
     }
 
+    private User verifyIfNeeded(User existingUser) {
+        //linking: Google already vouches for this email, so trust it even
+        // if the local account never completed manual verification.
+        if (!existingUser.isEmailVerified()) {
+            existingUser.setEmailVerified(true);
+            return userRepository.save(existingUser);
+        }
+        return existingUser;
+    }
+
     private User createNewOAuthUser(String email) {
         User newUser = User.builder()
                 .email(email)
                 .role(Role.USER)
+                .emailVerified(true)
                 .build();
         return userRepository.save(newUser);
     }

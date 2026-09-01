@@ -30,6 +30,9 @@ public class PasswordResetService {
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByEmail(request.email()).ifPresent(user -> {
+            passwordResetTokenRepository.findAllByUser_IdAndUsedFalse(user.getId())
+                    .forEach(token -> token.setUsed(true));
+
             String rawToken = generateRawToken();
 
             PasswordResetToken resetToken = PasswordResetToken.builder()
