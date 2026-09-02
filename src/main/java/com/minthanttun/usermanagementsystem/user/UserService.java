@@ -56,6 +56,16 @@ public class UserService {
     }
 
     @Transactional
+    public User deleteProfilePhoto(User user) {
+        if (user.getProfileImageUrl() != null) {
+            profileImageService.deleteImage(user.getId());
+            user.setProfileImageUrl(null);
+            return userRepository.save(user);
+        }
+        return user;
+    }
+
+    @Transactional
     public void changePassword(User currentUser, ChangePasswordRequest request) {
         if (currentUser.getPasswordHash() == null) {
             throw new InvalidCredentialsException("This account has no password set yet. Use the set-password endpoint instead.");

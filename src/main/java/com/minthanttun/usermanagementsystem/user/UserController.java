@@ -52,12 +52,18 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/me/photo")
+    @PutMapping("/me/photo")
     public UserResponse uploadProfilePhoto(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam("file")MultipartFile file
-            ) {
+            @RequestParam("file") MultipartFile file
+    ) {
         User updated = userService.uploadProfilePhoto(userDetails.getUser(), file);
+        return UserResponse.from(updated);
+    }
+
+    @DeleteMapping("/me/photo")
+    public UserResponse deleteProfilePhoto(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        User updated = userService.deleteProfilePhoto(userDetails.getUser());
         return UserResponse.from(updated);
     }
 

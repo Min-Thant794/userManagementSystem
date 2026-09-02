@@ -27,7 +27,7 @@ public class ProfileImageService {
 
         try {
             Map<String, Object> uploadOptions = ObjectUtils.asMap(
-                    "public_id", "profile-images/" + userId,
+                    "public_id", avatarPublicId(userId),
                     "overwrite", true,
                     "transformation", new Transformation()
                             .width(300)
@@ -43,6 +43,14 @@ public class ProfileImageService {
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload profile image", e);
+        }
+    }
+
+    public void deleteImage(UUID userId) {
+        try {
+            cloudinary.uploader().destroy(avatarPublicId(userId), ObjectUtils.emptyMap());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete profile image", e);
         }
     }
 
@@ -67,5 +75,9 @@ public class ProfileImageService {
         if (!validContentType && !validExtension) {
             throw new IllegalArgumentException("Only JPEG, PNG, and WebP images are allowed");
         }
+    }
+
+    private String avatarPublicId(UUID userId) {
+        return "profile-images/" + userId + "/avatar";
     }
 }
