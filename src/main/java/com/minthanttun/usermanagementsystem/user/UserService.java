@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +19,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProfileImageService profileImageService;
 
     @Transactional
     public User updateProfile(User currentUser, UpdateProfileRequest request) {
@@ -44,6 +46,13 @@ public class UserService {
         }
 
         return userRepository.save(currentUser);
+    }
+
+    @Transactional
+    public User uploadProfilePhoto(User user, MultipartFile file) {
+        String imageUrl = profileImageService.uploadImage(file, user.getId());
+        user.setProfileImageUrl(imageUrl);
+        return userRepository.save(user);
     }
 
     @Transactional

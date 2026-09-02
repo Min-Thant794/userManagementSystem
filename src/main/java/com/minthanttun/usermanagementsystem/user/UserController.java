@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final ProfileImageService profileImageService;
 
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -48,6 +50,15 @@ public class UserController {
     ) {
         userService.setInitialPassword(userDetails.getUser(), request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/photo")
+    public UserResponse uploadProfilePhoto(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("file")MultipartFile file
+            ) {
+        User updated = userService.uploadProfilePhoto(userDetails.getUser(), file);
+        return UserResponse.from(updated);
     }
 
     @PostMapping("/me/complete-profile")

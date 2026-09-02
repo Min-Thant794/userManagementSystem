@@ -46,6 +46,9 @@ public class User {
     @Builder.Default
     private boolean emailVerified = false;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     @Builder.Default

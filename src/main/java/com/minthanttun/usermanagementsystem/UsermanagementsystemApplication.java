@@ -14,5 +14,4 @@ public class UsermanagementsystemApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(UsermanagementsystemApplication.class, args);
 	}
-
 }

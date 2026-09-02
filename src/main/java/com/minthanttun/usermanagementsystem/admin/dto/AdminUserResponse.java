@@ -15,6 +15,7 @@ public record AdminUserResponse (
         Role role,
         AccountStatus status,
         boolean profileComplete,
+        String profileImageUrl,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -27,6 +28,7 @@ public record AdminUserResponse (
           user.getRole(),
           user.getStatus(),
           user.isProfileComplete(),
+          user.getProfileImageUrl(),
           user.getCreatedAt(),
           user.getUpdatedAt()
         );
