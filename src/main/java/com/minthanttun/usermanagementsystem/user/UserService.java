@@ -3,15 +3,22 @@ package com.minthanttun.usermanagementsystem.user;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
+import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
 import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
 import com.minthanttun.usermanagementsystem.user.dto.CompleteProfileRequest;
 import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
 import com.minthanttun.usermanagementsystem.user.dto.UpdateProfileRequest;
+import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +29,10 @@ public class UserService {
     private final ProfileImageService profileImageService;
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#currentUser.id"),
+            @CacheEvict(value = "adminUsers", key = "#currentUser.id")
+    })
     public User updateProfile(User currentUser, UpdateProfileRequest request) {
 
         if (request.username() != null && !request.username().equals(currentUser.getUsername())) {
@@ -49,6 +60,10 @@ public class UserService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
     public User uploadProfilePhoto(User user, MultipartFile file) {
         String imageUrl = profileImageService.uploadImage(file, user.getId());
         user.setProfileImageUrl(imageUrl);
@@ -56,6 +71,10 @@ public class UserService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
     public User deleteProfilePhoto(User user) {
         if (user.getProfileImageUrl() != null) {
             profileImageService.deleteImage(user.getId());
@@ -90,6 +109,10 @@ public class UserService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
     public User completeProfile(User user, CompleteProfileRequest request) {
         if (user.isProfileComplete()) {
             throw new ProfileIncompleteException("Profile is already complete");
@@ -106,5 +129,13 @@ public class UserService {
         user.setUsername(request.username());
         user.setPhoneNumber(request.phoneNumber());
         return userRepository.save(user);
+    }
+
+    @Cacheable(value = "users", key = "#userId")
+    public UserResponse getCachedProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        return UserResponse.from(user);
     }
 }

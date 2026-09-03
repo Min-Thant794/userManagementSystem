@@ -21,7 +21,7 @@ public class UserController {
 
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return UserResponse.from(userDetails.getUser());
+        return userService.getCachedProfile(userDetails.getUser().getId());
     }
 
     @PatchMapping("/me")

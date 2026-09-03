@@ -1,0 +1,4320 @@
+============================================================
+FILE: ./pom.xml
+============================================================
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.4</version>
+		<relativePath/>
+	</parent>
+	<groupId>com.minthanttun</groupId>
+	<artifactId>usermanagementsystem</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>usermanagementsystem</name>
+	<description>User registration and authentication system</description>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+
+	<dependencies>
+		<!-- Core -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- Database -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
+		<!-- JWT -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.6</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.6</version>
+			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.79</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>8.19.0</version>
+		</dependency>
+
+		<!-- SMTP -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		<!-- Cloudinary -->
+		<dependency>
+			<groupId>com.cloudinary</groupId>
+			<artifactId>cloudinary-http44</artifactId>
+			<version>1.39.0</version>
+		</dependency>
+
+		<!-- redis -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
+		<!-- Dev tooling -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- Testing -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>me.paulschwarz</groupId>
+			<artifactId>spring-dotenv</artifactId>
+			<version>4.0.0</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-compile</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+					<execution>
+						<id>default-testCompile</id>
+						<phase>test-compile</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+						<configuration>
+							<annotationProcessorPaths>
+								<path>
+									<groupId>org.projectlombok</groupId>
+									<artifactId>lombok</artifactId>
+								</path>
+							</annotationProcessorPaths>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
+============================================================
+FILE: ./HELP.md
+============================================================
+# Getting Started
+
+### Reference Documentation
+For further reference, please consider the following sections:
+
+* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
+* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/4.1.0/maven-plugin)
+* [Create an OCI image](https://docs.spring.io/spring-boot/4.1.0/maven-plugin/build-image.html)
+* [Spring Web](https://docs.spring.io/spring-boot/4.1.0/reference/web/servlet.html)
+* [Spring Security](https://docs.spring.io/spring-boot/4.1.0/reference/web/spring-security.html)
+* [Spring Data JPA](https://docs.spring.io/spring-boot/4.1.0/reference/data/sql.html#data.sql.jpa-and-spring-data)
+* [Validation](https://docs.spring.io/spring-boot/4.1.0/reference/io/validation.html)
+* [Spring Boot DevTools](https://docs.spring.io/spring-boot/4.1.0/reference/using/devtools.html)
+* [OAuth2 Client](https://docs.spring.io/spring-boot/4.1.0/reference/web/spring-security.html#web.security.oauth2.client)
+
+### Guides
+The following guides illustrate how to use some features concretely:
+
+* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
+* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
+* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
+* [Securing a Web Application](https://spring.io/guides/gs/securing-web/)
+* [Spring Boot and OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2/)
+* [Authenticating a User with LDAP](https://spring.io/guides/gs/authenticating-ldap/)
+* [Accessing Data with JPA](https://spring.io/guides/gs/accessing-data-jpa/)
+* [Validation](https://spring.io/guides/gs/validating-form-input/)
+
+### Maven Parent overrides
+
+Due to Maven's design, elements are inherited from the parent POM to the project POM.
+While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
+To prevent this, the project POM contains empty overrides for these elements.
+If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
+
+
+============================================================
+FILE: ./README.md
+============================================================
+# User Management System
+
+This is my **User Management System backend** project built with **Java and Spring Boot**.
+
+I am currently learning Java Spring Boot by building projects myself and using Claude as a learning assistant. This project is mainly for learning how a real backend application works, especially authentication, authorization, database relationships, security, and REST APIs.
+
+It is not meant to be a perfect production-ready application. I am building it step by step and learning from the problems I run into along the way.
+
+## What I am learning from this project
+
+Some of the main things I am practicing in this project are:
+
+* Java
+* Spring Boot
+* Spring MVC / REST API
+* Spring Data JPA
+* Spring Security
+* JWT authentication
+* Refresh tokens
+* OAuth2 / Google Login
+* PostgreSQL
+* Flyway database migrations
+* Password hashing with Argon2
+* Email verification
+* Password reset
+* Role-based authorization
+* Rate limiting
+* Audit logs
+* Validation and exception handling
+* Maven
+* Git and GitHub
+
+## Main Features
+
+### User Authentication
+
+Users can:
+
+* Sign up
+* Log in using username or email
+* Log out
+* Refresh their access token
+* Reset their password
+* Verify their email
+* Change their password
+* Complete their profile
+
+The authentication system uses **JWT access tokens** and **refresh tokens**. The refresh token is stored in an HTTP-only cookie. Access tokens expire after 15 minutes and refresh tokens expire after 7 days in the current configuration.
+
+### Email Verification
+
+When a new user signs up, an email verification process is started.
+
+Verification tokens are stored as hashes in the database and expire after 24 hours.
+
+### Password Reset
+
+Users can request a password reset through their email.
+
+The password reset token has a limited lifetime and is stored hashed in the database rather than storing the raw token.
+
+### Google OAuth2 Login
+
+The project also supports Google OAuth2/OIDC login.
+
+When a user logs in with Google, the application can find an existing linked account or create/link a user account. Google accounts with verified email addresses are accepted by the application.
+
+### User Profile
+
+Authenticated users can:
+
+* View their own profile
+* Update their profile
+* Change their password
+* Set an initial password for OAuth accounts
+* Complete their profile
+
+These endpoints are under `/api/users`.
+
+### Admin Features
+
+Admins can manage users.
+
+Current admin functionality includes:
+
+* View users
+* Search users
+* Filter users by role
+* Filter users by status
+* View a specific user
+* Update a user
+* Suspend/reactivate accounts
+* Change user roles
+* Create another admin
+* View audit logs
+
+The admin API is protected using `@PreAuthorize("hasRole('ADMIN')")`.
+
+There is also a rule that prevents the last remaining active admin from being demoted or suspended.
+
+### Login Attempt Lockout
+
+The project keeps track of failed login attempts.
+
+After **5 failed login attempts**, the account is temporarily locked for **15 minutes**.
+
+### Rate Limiting
+
+I added rate limiting using **Bucket4j**.
+
+There are different limits for different endpoints. For example:
+
+* Login: 5 requests/minute per IP
+* Signup: 5 requests/minute per IP
+* Forgot password: 5 requests/minute per IP
+* Reset password: 5 requests/minute per IP
+* Refresh token: 20 requests/minute per user
+* User endpoints: 100 requests/minute per user
+* Admin endpoints: 100 requests/minute per user
+
+There is also a global limit of 1000 requests per minute.
+
+## Technologies
+
+| Technology               | Purpose                          |
+| ------------------------ | -------------------------------- |
+| Java 21                  | Programming language             |
+| Spring Boot 3.5.4        | Backend framework                |
+| Spring Web               | REST APIs                        |
+| Spring Data JPA          | Database access                  |
+| Spring Security          | Authentication and authorization |
+| JWT                      | Access and refresh tokens        |
+| OAuth2 Client            | Google login                     |
+| PostgreSQL               | Database                         |
+| Flyway                   | Database migrations              |
+| Argon2                   | Password hashing                 |
+| Bucket4j                 | Rate limiting                    |
+| JavaMailSender           | Email                            |
+| Lombok                   | Reduce boilerplate code          |
+| Maven                    | Build and dependency management  |
+| JUnit / Spring Boot Test | Testing                          |
+
+The main dependencies and versions can be found in `pom.xml`.
+
+## Project Structure
+
+The project is organised into different packages based on the feature or responsibility.
+
+```text
+src/
+└── main/
+    ├── java/
+    │   └── com/minthanttun/usermanagementsystem/
+    │       ├── admin/
+    │       ├── auth/
+    │       ├── audit/
+    │       ├── common/
+    │       ├── config/
+    │       ├── security/
+    │       │   ├── jwt/
+    │       │   ├── oauth2/
+    │       │   └── ratelimit/
+    │       └── user/
+    │
+    └── resources/
+        ├── db/
+        │   └── migration/
+        └── application.properties
+```
+
+I am trying to keep authentication, users, admin functions, security, and common functionality separated instead of putting everything into one package.
+
+## API Endpoints
+
+### Authentication
+
+Base URL:
+
+```text
+/api/auth
+```
+
+| Method | Endpoint           | Description            |
+| ------ | ------------------ | ---------------------- |
+| POST   | `/signup`          | Create a new user      |
+| POST   | `/login`           | Login                  |
+| POST   | `/refresh`         | Get a new access token |
+| POST   | `/logout`          | Logout                 |
+| POST   | `/forgot-password` | Request password reset |
+| POST   | `/reset-password`  | Reset password         |
+
+These endpoints are defined in `AuthController`.
+
+### User
+
+Base URL:
+
+```text
+/api/users
+```
+
+| Method | Endpoint               | Description          |
+| ------ | ---------------------- | -------------------- |
+| GET    | `/me`                  | Get current user     |
+| PATCH  | `/me`                  | Update profile       |
+| PUT    | `/me/password`         | Change password      |
+| PUT    | `/me/password/initial` | Set initial password |
+| POST   | `/me/complete-profile` | Complete profile     |
+
+### Admin
+
+Base URL:
+
+```text
+/api/admin/users
+```
+
+| Method | Endpoint       | Description           |
+| ------ | -------------- | --------------------- |
+| GET    | `/`            | List/search users     |
+| GET    | `/{id}`        | Get a user            |
+| PUT    | `/{id}`        | Update a user         |
+| PATCH  | `/{id}/status` | Change account status |
+| PATCH  | `/{id}/role`   | Change user role      |
+| POST   | `/`            | Create an admin       |
+
+All of these admin endpoints require the `ADMIN` role.
+
+### Admin Audit Logs
+
+```text
+GET /api/admin/audit-logs
+```
+
+Audit logs can be filtered by actor, target user, and action, and the endpoint is restricted to admins.
+
+## Authentication Flow
+
+The basic authentication flow currently looks like this:
+
+```text
+User
+  │
+  ├── Sign Up
+  │      │
+  │      ├── Validate input
+  │      ├── Check duplicate username/email/phone
+  │      ├── Hash password with Argon2
+  │      ├── Save user
+  │      └── Send verification email
+  │
+  └── Login
+         │
+         ├── Check email verification
+         ├── Check account status
+         ├── Check login attempts / lockout
+         ├── Verify password
+         ├── Create access token
+         └── Create refresh token
+```
+
+The access token contains information such as the user ID, username, role, and token type.
+
+## Security
+
+Spring Security is configured to use stateless authentication.
+
+The application:
+
+* Uses JWT authentication
+* Disables CSRF for the API
+* Uses an HTTP-only refresh-token cookie
+* Uses Argon2 for password hashing
+* Uses role-based authorization
+* Supports Google OAuth2 login
+* Checks suspended/locked accounts
+* Uses rate limiting
+
+Authenticated requests use the JWT filter before the normal Spring Security username/password filter.
+
+The password encoder is configured with Argon2.
+
+## Database
+
+The project uses **PostgreSQL**.
+
+The database currently contains tables for:
+
+* Users
+* OAuth accounts
+* Refresh tokens
+* Password reset tokens
+* Email verification tokens
+* Audit logs
+
+The user table contains information such as username, email, phone number, password hash, role, account status, email verification status, failed login attempts, and lockout time.
+
+Flyway is used to manage database migrations. The migration files are located in:
+
+```text
+src/main/resources/db/migration/
+```
+
+Some of the current migrations include:
+
+```text
+V1__init.sql
+V2__seed_first_admin.sql
+V3__add_login_lockout.sql
+V4__add_password_reset_tokens.sql
+V5__add_email_verification.sql
+```
+
+## Requirements
+
+Before running the project, you need:
+
+* Java 21
+* Maven
+* PostgreSQL
+* A PostgreSQL database
+* Google OAuth credentials if you want Google login
+* Gmail SMTP credentials if you want email features
+
+## Database Setup
+
+Create a PostgreSQL database:
+
+```sql
+CREATE DATABASE user_management_system;
+```
+
+The application is currently configured to connect to:
+
+```text
+jdbc:postgresql://localhost:5432/user_management_system
+```
+
+Flyway will handle the database migrations when the application starts.
+
+## Environment Variables
+
+I am using environment variables for values that should not be hard-coded in the application.
+
+Create your environment configuration with values for:
+
+```text
+DB_USERNAME=
+DB_PASSWORD=
+JWT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GMAIL_USERNAME=
+GMAIL_APP_PASSWORD=
+```
+
+The application reads these values from the Spring configuration.
+
+**Do not commit your real secrets or passwords to GitHub.**
+
+## Running the Project
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Min-Thant794/userManagementSystem.git
+```
+
+Go into the project:
+
+```bash
+cd usermanagementsystem
+```
+
+Then run:
+
+```bash
+./mvnw spring-boot:run
+```
+
+On Windows:
+
+```bash
+mvnw.cmd spring-boot:run
+```
+
+You can also run the project directly from IntelliJ IDEA or another Java IDE.
+
+## Testing
+
+There is currently a basic Spring Boot test for checking whether the application context loads.
+
+```java
+@SpringBootTest
+class UsermanagementsystemApplicationTests {
+
+    @Test
+    void contextLoads() {
+    }
+}
+```
+
+I plan to add more tests as I continue learning, especially for authentication, user services, and admin functionality.
+
+## What I want to improve next
+
+This project is still a learning project, so there are things I want to improve as I learn more Spring Boot.
+
+Some things I want to work on next:
+
+* Add more unit tests
+* Add more integration tests
+* Improve API documentation
+* Improve exception handling
+* Improve validation
+* Learn more about Spring Security internals
+* Improve database design where necessary
+* Add a frontend later
+* Improve logging
+* Learn more about Docker and deployment
+* Deploy the backend
+* Clean up parts of the code as I understand Spring better
+
+## Things I learned while building this
+
+This project started as a simple user management idea, but it became much more complicated once I started adding authentication and security.
+
+Some of the things I learned while working on it:
+
+* How Spring Boot applications are structured
+* How controllers, services and repositories work together
+* How JPA maps Java classes to database tables
+* How Spring Security handles authentication
+* How JWT authentication works
+* Why access tokens and refresh tokens are different
+* How password hashing works
+* How OAuth2 login works
+* How database migrations work with Flyway
+* How filters work in Spring Security
+* How rate limiting can be implemented
+* Why validation should happen before business logic
+* Why secrets should not be stored directly in source code
+
+A lot of this project was built by trying things, breaking things, debugging them, and then understanding why they worked or didn't work.
+
+## Current Status
+
+🚧 **Learning / In Progress**
+
+The project is functional, but I am still actively learning and improving it.
+
+I don't consider the current code to be the "final" version. As I learn more about Java and Spring Boot, I expect the architecture and implementation to change.
+
+## Why I made this project
+
+I wanted a project where I could learn Spring Boot by actually building something rather than only following tutorials.
+
+Instead of making only a basic CRUD application, I decided to keep adding features that helped me understand different parts of backend development.
+
+This repository is basically my way of documenting my progress while learning Java Spring Boot.
+
+## Author
+
+**Min Thant Tun**
+
+Learning Java + Spring Boot one project at a time.
+
+---
+
+### Note
+
+This is a personal learning project. Some implementation decisions may change as I learn more about Spring Boot, Spring Security, backend architecture, and application security.
+
+============================================================
+FILE: ./.mvn/wrapper/maven-wrapper.properties
+============================================================
+wrapperVersion=3.3.4
+distributionType=only-script
+distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
+
+============================================================
+FILE: ./src/test/java/com/minthanttun/usermanagementsystem/UsermanagementsystemApplicationTests.java
+============================================================
+package com.minthanttun.usermanagementsystem;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class UsermanagementsystemApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+
+============================================================
+FILE: ./src/main/resources/db/migration/V1__init.sql
+============================================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+                       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                       username VARCHAR(50) UNIQUE,
+                       email VARCHAR(255) UNIQUE NOT NULL,
+                       phone_number VARCHAR(20) UNIQUE,
+                       password_hashed VARCHAR(255),
+                       role VARCHAR(10) NOT NULL DEFAULT 'USER' CHECK ( role IN ('USER', 'ADMIN') ),
+                       status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE' CHECK ( status IN ('ACTIVE', 'SUSPENDED') ),
+                       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_users_username ON users (username);
+CREATE INDEX idx_users_email ON users (email);
+CREATE INDEX idx_users_phone_number ON users (phone_number);
+
+CREATE TABLE oauth_accounts (
+                                id BIGSERIAL PRIMARY KEY ,
+                                user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                                provider VARCHAR(20) NOT NULL,
+                                provider_user_id VARCHAR(255) NOT NULL,
+                                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                                CONSTRAINT uq_oauth_provider_user UNIQUE (provider, provider_user_id)
+);
+
+CREATE INDEX idx_oauth_accounts_user_id ON oauth_accounts (user_id);
+
+CREATE TABLE refresh_tokens (
+                                id BIGSERIAL PRIMARY KEY,
+                                user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                                token_hash VARCHAR(255) NOT NULL,
+                                expires_at TIMESTAMPTZ NOT NULL,
+                                revoked BOOLEAN NOT NULL DEFAULT false,
+                                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
+CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens (token_hash);
+
+CREATE TABLE audit_logs (
+                            id BIGSERIAL PRIMARY KEY,
+                            actor_user_id UUID REFERENCES users (id),
+                            target_user_id UUID REFERENCES users (id),
+                            action VARCHAR(30) NOT NULL CHECK ( action IN ('ROLE_CHANGE', 'SUSPEND', 'REACTIVATE', 'UPDATE', 'ADMIN_CREATED') ),
+                            details JSONB,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_audit_logs_actor ON audit_logs (actor_user_id);
+CREATE INDEX idx_audit_logs_target ON audit_logs (target_user_id);
+============================================================
+FILE: ./src/main/resources/db/migration/V6__add_profile_image.sql
+============================================================
+ALTER TABLE users ADD COLUMN profile_image_url VARCHAR(500);
+============================================================
+FILE: ./src/main/resources/db/migration/V3__add_login_lockout.sql
+============================================================
+ALTER TABLE users
+    ADD COLUMN failed_login_attempts INT NOT NULL DEFAULT 0,
+    ADD COLUMN locked_until TIMESTAMPTZ;
+============================================================
+FILE: ./src/main/resources/db/migration/V2__seed_first_admin.sql
+============================================================
+INSERT INTO users (id, username, email, phone_number, password_hashed, role, status, created_at, updated_at)
+VALUES (
+           gen_random_uuid(),
+           'superadmin',
+           'admin@yourdomain.com',
+           '+10000000000',
+           '$argon2id$v=19$m=65536,t=3,p=1$NlwnXRHvXUcabAYXBJv4Jw$q+k9oQeWcFgG/NWn/mJZoj4NyiKSUBMrhH6Q9BlppuA',
+           'ADMIN',
+           'ACTIVE',
+           now(),
+           now()
+       );
+============================================================
+FILE: ./src/main/resources/db/migration/V5__add_email_verification.sql
+============================================================
+ALTER TABLE users
+    ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT false;
+
+-- Existing admins (including the seeded superadmin) shouldn't be retroactively
+-- locked out by a feature that didn't exist when they were created.
+UPDATE users SET email_verified = true WHERE role = 'ADMIN';
+
+CREATE TABLE email_verification_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_email_verification_tokens_user_id ON email_verification_tokens (user_id);
+CREATE INDEX idx_email_verification_tokens_token_has ON email_verification_tokens (token_hash);
+============================================================
+FILE: ./src/main/resources/db/migration/V4__add_password_reset_tokens.sql
+============================================================
+CREATE TABLE password_reset_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens (user_id);
+CREATE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens (token_hash);
+============================================================
+FILE: ./src/main/resources/application.properties
+============================================================
+spring.application.name=usermanagementsystem
+
+# PostgreSQL
+spring.datasource.url=jdbc:postgresql://localhost:5432/user_management_system
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
+
+# Flyway
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+spring.flyway.baseline-on-migrate=true
+
+# CORS
+app.cors.allowed-origins=http://localhost:5173
+
+# JWT
+app.jwt.secret=${JWT_SECRET}
+app.jwt.access-token-expiry-ms=900000
+app.jwt.refresh-token-expiry-ms=604800000
+
+# Cookie
+app.cookie.secure=false
+
+# OAuth2 (Google)
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}
+spring.security.oauth2.client.registration.google.scope=openid,profile,email
+
+# Mail (Gmail SMTP)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${GMAIL_USERNAME}
+spring.mail.password=${GMAIL_APP_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+
+app.mail.reset-password-base-url=http://localhost:5173/reset-password
+
+app.mail.verify-email-base-url=http://localhost:5173/verify-email
+
+# Image Storage URL (CLOUDINARY)
+cloudinary.cloud-name=${CLOUDINARY_CLOUD_NAME}
+cloudinary.api-key=${CLOUDINARY_API_KEY}
+cloudinary.api-secret=${CLOUDINARY_API_SECRET}
+
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=5MB
+
+# Redis
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.password=${DOCKER_REDIS_PASSWORD}
+
+# Vite default port for future React app
+app.oauth2.frontend-redirect-uri=http://localhost:5173/oauth2/callback
+
+# Debug (temporary)
+#debug=true
+#logging.level.org.flywaydb=DEBUG
+#logging.level.org.springframework.boot.autoconfigure.flyway=TRACE
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/UsermanagementsystemApplication.java
+============================================================
+package com.minthanttun.usermanagementsystem;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
+
+@SpringBootApplication
+@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
+@EnableScheduling
+@EnableCaching
+public class UsermanagementsystemApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(UsermanagementsystemApplication.class, args);
+	}
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/SecurityConfig.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthFilter;
+import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthenticationEntryPoint;
+import com.minthanttun.usermanagementsystem.security.oauth2.CustomOidcUserService;
+import com.minthanttun.usermanagementsystem.security.oauth2.OAuth2LoginSuccessHandler;
+import com.minthanttun.usermanagementsystem.security.ratelimit.RateLimitFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomOidcUserService customOidcUserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final RateLimitFilter rateLimitFilter;
+
+    @Value("${app.cors.allowed-origins}")
+    private String[] allowedOrigins;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new Argon2PasswordEncoder(16, 32, 1, 65536, 3);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of(allowedOrigins));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo.oidcUserService(customOidcUserService))
+                        .successHandler(oAuth2LoginSuccessHandler)
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthFilter.class);
+
+        return http.build();
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/RateLimitRule.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+public record RateLimitRule (
+        String pathPattern,
+        int capacity,
+        int refillTokens,
+        long refillPeriodSeconds,
+        KeyType keyType,
+        RefillStrategy refillStrategy
+) {
+    public enum KeyType { IP, USER }
+    public enum RefillStrategy { GREEDY, INTERVALLY }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/CloudinaryConfig.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+import com.cloudinary.Cloudinary;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+public class CloudinaryConfig {
+
+    @Value("${cloudinary.cloud-name}")
+    private String cloudName;
+
+    @Value("${cloudinary.api-key}")
+    private String apiKey;
+
+    @Value("${cloudinary.api-secret}")
+    private String apiSecret;
+
+    @Bean
+    public Cloudinary cloudinary() {
+        Map<String, String> config = new HashMap<>();
+        config.put("cloud_name", cloudName);
+        config.put("api_key", apiKey);
+        config.put("api_secret", apiSecret);
+        return new Cloudinary(config);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/RateLimitConfig.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.KeyType.IP;
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.KeyType.USER;
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.RefillStrategy.GREEDY;
+import static com.minthanttun.usermanagementsystem.config.RateLimitRule.RefillStrategy.INTERVALLY;
+
+@Configuration
+public class RateLimitConfig {
+
+    @Bean
+    public List<RateLimitRule> rateLimitRules() {
+        return List.of(
+                new RateLimitRule("/api/auth/login", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/signup", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/forgot-password", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/reset-password", 5, 5, 60, IP, INTERVALLY),
+                new RateLimitRule("/api/auth/refresh", 20, 20, 60, USER, GREEDY),
+                new RateLimitRule("/api/users/**", 100, 100, 60, USER, GREEDY),
+                new RateLimitRule("/api/admin/**", 100, 100, 60, USER, GREEDY)
+        );
+    }
+
+    //The global ceiling - one shared bucket across ALL requests, regardless of endpoint or identity.
+    public static final int GLOBAL_CAPACITY = 1000;
+    public static final long GLOBAL_REFILL_PERIOD_SECONDS = 60;
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/RedisCacheConfig.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+
+import java.time.Duration;
+
+@Configuration
+public class RedisCacheConfig {
+
+    @Bean
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.activateDefaultTyping(
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.EVERYTHING,
+                JsonTypeInfo.As.PROPERTY
+        );
+
+        GenericJackson2JsonRedisSerializer jsonSerializer =
+                new GenericJackson2JsonRedisSerializer(objectMapper);
+
+        RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(10))
+                .serializeValuesWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer)
+                )
+                .disableCachingNullValues();
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(cacheConfig)
+                .build();
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/JwtService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+import java.util.UUID;
+
+@Service
+public class JwtService {
+
+    private final SecretKey signingKey;
+    private final long accessTokenExpiryMs;
+    private final long refreshTokenExpiryMs;
+
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.access-token-expiry-ms}") long accessTokenExpiryMs,
+            @Value("${app.jwt.refresh-token-expiry-ms}") long refreshTokenExpiryMs
+    ) {
+        this.signingKey = Keys.hmacShaKeyFor(secret.getBytes());
+        this.accessTokenExpiryMs = accessTokenExpiryMs;
+        this.refreshTokenExpiryMs = refreshTokenExpiryMs;
+    }
+
+    public String generateAccessToken(User user) {
+        return buildToken(user, accessTokenExpiryMs, "access");
+    }
+
+    public String generateRefreshToken(User user) {
+        return buildToken(user, refreshTokenExpiryMs, "refresh");
+    }
+
+    private String buildToken(User user, long expiryMs, String tokenType) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expiryMs);
+
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .claim("username", user.getUsername())
+                .claim("role", user.getRole().name())
+                .claim("type", tokenType)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(signingKey)
+                .compact();
+    }
+
+    public UUID extractUserId(String token) {
+        return UUID.fromString(extractClaims(token).getSubject());
+    }
+
+    public String extractTokenType(String token) {
+        return extractClaims(token).get("type", String.class);
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            extractClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+            return extractClaims(token).getExpiration().before(new Date());
+        } catch (ExpiredJwtException e) {
+            return true;
+        }
+    }
+
+    private Claims extractClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/CookieUtil.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CookieUtil {
+
+    @Value("${app.cookie.secure}")
+    private boolean secure;
+
+    public void setRefreshTokenCookie(HttpServletResponse response, String refreshToken, long maxAgeMs) {
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(maxAgeMs / 1000)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    public void clearRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/JwtAuthenticationEntryPoint.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
+
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void commence(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationException authException
+    ) throws IOException, ServletException {
+
+        String authError = (String) request.getAttribute("auth_error");
+        ProblemDetail problem;
+
+        if ("ACCOUNT_SUSPENDED".equals(authError)) {
+            problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.FORBIDDEN, "This account has been suspended");
+            problem.setTitle("Account Suspended");
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+        } else if ("PROFILE_INCOMPLETE".equals(authError)) {
+            problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Please complete your profile before continuing");
+            problem.setTitle("Profile Incomplete");
+            problem.setProperty("action", "complete_profile");
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+        } else {
+            problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.UNAUTHORIZED, "Authentication is required to access this resource");
+            problem.setTitle("Unauthorized");
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        }
+
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(objectMapper.writeValueAsString(problem));
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/JwtAuthFilter.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetailsService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final CustomUserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+//        System.out.println("===== JWT FILTER =====");
+//        System.out.println("URI: " + request.getRequestURI());
+//        System.out.println("METHOD: " + request.getMethod());
+//        System.out.println("Authorization: " + request.getHeader("Authorization"));
+//        System.out.println("Content-Type: " + request.getContentType());
+
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+//        System.out.println("Token present: " + !token.isBlank());
+//        System.out.println("Token valid: " + jwtService.isTokenValid(token));
+//        System.out.println("Token expired: " + jwtService.isTokenExpired(token));
+//        System.out.println("Token type: " + jwtService.extractTokenType(token));
+
+        if (!jwtService.isTokenValid(token) || jwtService.isTokenExpired(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (!"access".equals(jwtService.extractTokenType(token))) {
+            // A refresh token (or anything else) was used where an access token belongs.
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Only set authentication if nothing has already authenticated this request.
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            UUID userId = jwtService.extractUserId(token);
+            UserDetails userDetails = userDetailsService.loadUserById(userId);
+
+            CustomUserDetails customUserDetails = (CustomUserDetails) userDetails;
+
+            if (!customUserDetails.isEnabled() || !customUserDetails.isAccountNonLocked()) {
+                // FR30: suspension re-checked live, even though the token itself is still valid.
+                request.setAttribute("auth_error", "ACCOUNT_SUSPENDED");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            String uri = request.getRequestURI();
+
+            if (!customUserDetails.getUser().isProfileComplete()
+                    && !uri.equals("/api/users/me/complete-profile")
+                    && !uri.equals("/api/users/me/photo")) {
+
+                request.setAttribute("auth_error", "PROFILE_INCOMPLETE");
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+//            System.out.println(">>> JWT AUTHENTICATION SUCCESS");
+//            System.out.println("User ID: " + customUserDetails.getUser().getId());
+//            System.out.println("Profile complete: " + customUserDetails.getUser().isProfileComplete());
+
+            var authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities()
+            );
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/TokenHasher.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import org.springframework.stereotype.Component;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+
+@Component
+public class TokenHasher {
+
+    public String hash(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(rawToken.getBytes());
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/TokenIssuer.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.minthanttun.usermanagementsystem.auth.RefreshToken;
+import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
+import com.minthanttun.usermanagementsystem.user.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+
+@Component
+@RequiredArgsConstructor
+public class TokenIssuer {
+
+    private final JwtService jwtService;
+    private final TokenHasher tokenHasher;
+    private final RefreshTokenRepository refreshTokenRepository;
+
+    @Value("${app.jwt.refresh-token-expiry-ms}")
+    private long refreshTokenExpiryMs;
+
+    public record IssuedTokens(String accessToken, String refreshToken, long refreshTokenExpiryMs) {}
+
+    @Transactional
+    public IssuedTokens issueTokenPair(User user) {
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+
+        RefreshToken tokenEntity = RefreshToken.builder()
+                .user(user)
+                .tokenHash(tokenHasher.hash(refreshToken))
+                .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(tokenEntity);
+
+        return new IssuedTokens(accessToken, refreshToken, refreshTokenExpiryMs);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/oauth2/CustomOAuth2User.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.oauth2;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+public class CustomOAuth2User implements OidcUser {
+
+    private final User user;
+    private final OidcIdToken idToken;
+    private final OidcUserInfo userInfo;
+
+    public CustomOAuth2User(User user, OidcIdToken idToken, OidcUserInfo userInfo) {
+        this.user = user;
+        this.idToken = idToken;
+        this.userInfo = userInfo;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return idToken.getClaims();
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+    }
+
+    @Override
+    public String getName() {
+        return user.getId().toString();
+    }
+
+    @Override
+    public Map<String, Object> getClaims() {
+        return idToken.getClaims();
+    }
+
+    @Override
+    public OidcUserInfo getUserInfo() {
+        return userInfo;
+    }
+
+    @Override
+    public OidcIdToken getIdToken() {
+        return idToken;
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/oauth2/OAuth2LoginSuccessHandler.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.oauth2;
+
+import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
+import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
+
+    private final TokenIssuer tokenIssuer;
+    private final CookieUtil cookieUtil;
+
+    @Value("${app.oauth2.frontend-redirect-uri}")
+    private String frontendRedirectUri;
+
+    @Override
+    public void onAuthenticationSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication
+    ) throws IOException, ServletException {
+
+        CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
+        User user = oAuth2User.getUser();
+
+        var tokens = tokenIssuer.issueTokenPair(user);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
+
+        String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
+                .queryParam("profileComplete", user.isProfileComplete())
+                .build().toUriString();
+
+        response.sendRedirect(redirectUrl);
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/oauth2/CustomOidcUserService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.oauth2;
+
+import com.minthanttun.usermanagementsystem.auth.OAuthAccount;
+import com.minthanttun.usermanagementsystem.auth.OAuthAccountRepository;
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class CustomOidcUserService extends OidcUserService {
+
+    private final UserRepository userRepository;
+    private final OAuthAccountRepository oAuthAccountRepository;
+
+    @Override
+    @Transactional
+    public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+        // Spring does the actual token exchange AND verifies the ID token's signature here.
+        OidcUser oidcUser = super.loadUser(userRequest);
+
+        String provider = userRequest.getClientRegistration().getRegistrationId().toUpperCase();
+        String providerUserId = oidcUser.getSubject(); // OidcUser has this built in, no manual getAttribute needed
+        String email = oidcUser.getEmail();
+        Boolean emailVerified = oidcUser.getEmailVerified();
+
+        if (email == null || Boolean.FALSE.equals(emailVerified)) {
+            throw new OAuth2AuthenticationException("Google account has no verified email");
+        }
+
+        User user = oAuthAccountRepository.findByProviderAndProviderUserId(provider, providerUserId)
+                .map(oAuthAccount -> userRepository.findById(oAuthAccount.getUser().getId())
+                        .orElseThrow(() -> new OAuth2AuthenticationException("Linked user no longer exists")))
+                .orElseGet(() -> linkOrCreateUser(provider, providerUserId, email));
+
+        return new CustomOAuth2User(user, oidcUser.getIdToken(), oidcUser.getUserInfo());
+    }
+
+    private User linkOrCreateUser(String provider, String providerUserId, String email) {
+        User user = userRepository.findByEmail(email)
+                .map(this::verifyIfNeeded)
+                .orElseGet(() -> createNewOAuthUser(email));
+
+        OAuthAccount link = OAuthAccount.builder()
+                .user(user)
+                .provider(provider)
+                .providerUserId(providerUserId)
+                .build();
+        oAuthAccountRepository.save(link);
+
+        return user;
+    }
+
+    private User verifyIfNeeded(User existingUser) {
+        //linking: Google already vouches for this email, so trust it even
+        // if the local account never completed manual verification.
+        if (!existingUser.isEmailVerified()) {
+            existingUser.setEmailVerified(true);
+            return userRepository.save(existingUser);
+        }
+        return existingUser;
+    }
+
+    private User createNewOAuthUser(String email) {
+        User newUser = User.builder()
+                .email(email)
+                .role(Role.USER)
+                .emailVerified(true)
+                .build();
+        return userRepository.save(newUser);
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/ratelimit/RateLimitFilter.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.ratelimit;
+
+import com.minthanttun.usermanagementsystem.config.RateLimitConfig;
+import com.minthanttun.usermanagementsystem.config.RateLimitRule;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import io.github.bucket4j.Bucket;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+@RequiredArgsConstructor
+public class RateLimitFilter extends OncePerRequestFilter {
+
+    private final List<RateLimitRule> rateLimitRules;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    private final ConcurrentHashMap<String, Bucket> endpointBuckets = new ConcurrentHashMap<>();
+    private final Bucket globalBucket = buildBucket(
+            RateLimitConfig.GLOBAL_CAPACITY,
+            RateLimitConfig.GLOBAL_CAPACITY,
+            RateLimitConfig.GLOBAL_REFILL_PERIOD_SECONDS,
+            RateLimitRule.RefillStrategy.GREEDY
+    );
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        //1. global ceiling - checked on every request, no exceptions.
+        if (!globalBucket.tryConsume(1)) {
+            rejectWithTooManyRequests(response, "Global rate limit exceeded, try again shortly");
+            return;
+        }
+
+        //2. Endpoint-specific rule, if this path matches one.
+        RateLimitRule matchedRule = findMatchingRule(request.getRequestURI());
+        if (matchedRule != null) {
+            String key = resolveKey(request, matchedRule.keyType());
+            Bucket bucket = endpointBuckets.computeIfAbsent(
+                    matchedRule.pathPattern() + ":" + key,
+                    k -> buildBucket(matchedRule.capacity(), matchedRule.refillTokens(),
+                            matchedRule.refillPeriodSeconds(), matchedRule.refillStrategy())
+            );
+
+            if (!bucket.tryConsume(1)) {
+                rejectWithTooManyRequests(response, "Rate limit exceeded for this endpoint");
+                return;
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private RateLimitRule findMatchingRule(String uri) {
+        return rateLimitRules.stream()
+                .filter(rule -> pathMatcher.match(rule.pathPattern(), uri))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String resolveKey(HttpServletRequest request, RateLimitRule.KeyType keyType) {
+        if (keyType == RateLimitRule.KeyType.USER) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+                return "user:" + userDetails.getUser().getId();
+            }
+            //no authenticated user (e.g., a bad/missing token hit a USER-tier endpoint) - fall back to IP
+        }
+        return "ip:" + request.getRemoteAddr();
+    }
+
+    private Bucket buildBucket(int capacity, int refillTokens, long refillPeriodSeconds,
+                               RateLimitRule.RefillStrategy strategy) {
+        return Bucket.builder()
+                .addLimit(limit -> {
+                    var capacityStage = limit.capacity(capacity);
+                    if (strategy == RateLimitRule.RefillStrategy.INTERVALLY) {
+                        return capacityStage.refillIntervally(refillTokens, Duration.ofSeconds(refillPeriodSeconds));
+                    } else {
+                        return capacityStage.refillGreedy(refillTokens, Duration.ofSeconds(refillPeriodSeconds));
+                    }
+                })
+                .build();
+    }
+
+    private void rejectWithTooManyRequests(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(429);
+        response.setHeader("Retry-After", "60");
+        response.setContentType("application/json");
+        response.getWriter().write(
+                "{\"type\":\"about:blank\",\"title\":\"Too Many Requests\",\"status\":429,\"detail\":\"" + message + "\"}"
+        );
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/CustomUserDetails.java
+============================================================
+package com.minthanttun.usermanagementsystem.security;
+
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.User;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
+
+public class CustomUserDetails implements UserDetails {
+
+    private final User user;
+
+    public CustomUserDetails(User user) {
+        this.user = user;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return user.getPasswordHash();
+    }
+
+    @Override
+    public String getUsername() {
+        return user.getUsername();
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return user.getStatus() != AccountStatus.SUSPENDED && !user.isLocked();
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return user.getStatus() == AccountStatus.ACTIVE;
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/CustomUserDetailsService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security;
+
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .map(CustomUserDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+
+    public UserDetails loadUserById(UUID id) {
+        return userRepository.findById(id)
+                .map(CustomUserDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + id));
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/SignupRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record SignupRequest (
+        @NotBlank(message = "Username is required")
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters.")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9_]+$",
+                message = "Username may only contain letters, numbers, and underscores"
+        )
+        String username,
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be a valid email address")
+        @Size(max = 255, message = "Email must not exceed 255 characters")
+        String email,
+
+        @NotBlank(message = "Phone number is required")
+        @Pattern(
+                regexp = "^\\+?[0-9]{7,15}$",
+                message = "Phone number must be 7-15 digits, optionally starting with +"
+        )
+        String phoneNumber,
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        @Pattern(
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+                message = "Password must contain at least one letter and one number"
+        )
+        String password
+) {
+
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/VerifyEmailRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record VerifyEmailRequest (
+        @NotBlank(message = "Token is required")
+        String token
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/AuthResponse.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+public record AuthResponse(
+        String accessToken,
+        String tokenType,
+        long expiresIn
+) {
+    public static AuthResponse of(String accessToken, long expiresInMs) {
+        return new AuthResponse(accessToken, "Bearer", expiresInMs / 1000);
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/LoginRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginRequest (
+        @NotBlank(message = "Username or email is required")
+        String identifier,
+
+        @NotBlank(message = "Password is reuqired")
+        String password
+){
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/ForgotPasswordRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record ForgotPasswordRequest (
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be a valid email address")
+        String email
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/ResendVerificationRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record ResendVerificationRequest (
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be a valid email address")
+        String email
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/ResetPasswordRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record ResetPasswordRequest (
+        @NotBlank(message = "Token is required")
+        String token,
+
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        @Pattern(
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+                message = "Password must contain at least one letter and one number"
+        )
+        String newPassword
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/RefreshToken.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "refresh_tokens")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
+public class RefreshToken {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "token_hash", nullable = false, length = 255)
+    private String tokenHash;
+
+    @Column(name = "expires_at", nullable = false)
+    private OffsetDateTime expiresAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean revoked = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/PasswordResetToken.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "password_reset_tokens")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PasswordResetToken {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "token_hash", nullable = false, length = 255)
+    private String tokenHash;
+
+    @Column(name = "expires_at", nullable = false)
+    private OffsetDateTime expiresAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean used = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/OAuthAccount.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "oauth_accounts", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"provider", "provider_user_id"})
+})
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
+public class OAuthAccount {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(nullable = false, length = 20)
+    private String provider;
+
+    @Column(name = "provider_user_id", nullable = false, length = 255)
+    private String providerUserId;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/RefreshTokenRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+import java.util.UUID;
+import java.time.OffsetDateTime;
+
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+    Optional<RefreshToken> findByTokenHash(String tokenHash);
+    void deleteAllByUser_Id(UUID userId);
+    long deleteByRevokedTrueOrExpiresAtBefore(OffsetDateTime cutoff);
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificationToken.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "email_verification_tokens")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class EmailVerificationToken {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "token_hash", nullable = false, length = 255)
+    private String tokenHash;
+
+    @Column(name = "expires_at", nullable = false)
+    private OffsetDateTime expiresAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean used = false;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/OAuthAccountRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface OAuthAccountRepository extends JpaRepository<OAuthAccount, Long> {
+    Optional<OAuthAccount> findByProviderAndProviderUserId(String provider, String providerUserId);
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/AuthController.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.auth.dto.*;
+import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+    private final PasswordResetService passwordResetService;
+    private final CookieUtil cookieUtil;
+    private final EmailVerificationService emailVerificationService;
+
+    @PostMapping("/signup")
+    public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
+        User created = authService.signup(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verifyEmail(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        emailVerificationService.resendVerification(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        var tokens = authService.login(request);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
+        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = "refreshToken") String refreshToken,
+            HttpServletResponse response
+    ) {
+        var tokens = authService.refresh(refreshToken);
+        cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
+        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response
+    ) {
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+        cookieUtil.clearRefreshTokenCookie(response);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.forgotPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/AuthService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
+import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
+import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedException;
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.EmailNotVerifiedException;
+import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final LoginAttemptService loginAttemptService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final TokenHasher tokenHasher;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenIssuer tokenIssuer;
+    private final EmailVerificationService emailVerificationService;
+
+    @Transactional
+    public User signup(SignupRequest request) {
+        if (userRepository.existsByUsername(request.username())) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateResourceException("Email is already registered");
+        }
+        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new DuplicateResourceException("Phone number is already registered");
+        }
+
+        User user = User.builder()
+                .username(request.username())
+                .email(request.email())
+                .phoneNumber(request.phoneNumber())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .build();
+
+        User saved = userRepository.save(user);
+
+        emailVerificationService.generateVerificationEmail(saved);
+
+        return saved;
+    }
+
+    @Transactional
+    public TokenIssuer.IssuedTokens login(LoginRequest request) {
+        Optional<User> maybeUser = userRepository.findByUsername(request.identifier())
+                .or(() -> userRepository.findByEmail(request.identifier()));
+
+        String resolvedUsername = maybeUser.map(User::getUsername).orElse(request.identifier());
+
+        // Block unverified accounts before checking the password at all — consistent
+        // with how suspended/locked accounts are already rejected ahead of credential
+        // verification, via Spring Security's own pre-authentication check ordering.
+        if (maybeUser.isPresent() && !maybeUser.get().isEmailVerified()) {
+            throw new EmailNotVerifiedException("Please verify your email address before logging in");
+        }
+
+        CustomUserDetails userDetails;
+        try {
+            var authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(resolvedUsername, request.password())
+            );
+            userDetails = (CustomUserDetails) authentication.getPrincipal();
+        } catch (DisabledException | LockedException e) {
+            throw new AccountSuspendedException("This account has been suspended or is temporarily locked");
+        } catch (BadCredentialsException e) {
+            loginAttemptService.recordFailedAttempt(resolvedUsername);
+            throw new InvalidCredentialsException("Invalid username or password");
+        }
+
+        User user = userDetails.getUser();
+        if (user.getFailedLoginAttempts() > 0) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
+
+        return tokenIssuer.issueTokenPair(user);
+    }
+
+    @Transactional
+    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken) {
+        String hash = tokenHasher.hash(rawRefreshToken);
+
+        RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
+
+        if (tokenEntity.isRevoked()) {
+            throw new InvalidCredentialsException("Refresh token has been revoked");
+        }
+
+        if (tokenEntity.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new InvalidCredentialsException("Refresh token has expired");
+        }
+
+        User user = tokenEntity.getUser();
+        if (user.getStatus() == AccountStatus.SUSPENDED) {
+            throw new AccountSuspendedException("This account has been suspended");
+        }
+
+        // Rotate: revoke the old refresh token, issue a brand new pair.
+        tokenEntity.setRevoked(true);
+        refreshTokenRepository.save(tokenEntity);
+
+        return tokenIssuer.issueTokenPair(user);
+    }
+
+    @Transactional
+    public void logout(String rawRefreshToken) {
+        String hash = tokenHasher.hash(rawRefreshToken);
+
+        refreshTokenRepository.findByTokenHash(hash).ifPresent(token -> {
+            token.setRevoked(true);
+            refreshTokenRepository.save(token);
+        });
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/LoginAttemptService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class LoginAttemptService {
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final long LOCKOUT_DURATION_MINUTES = 15;
+
+    private final UserRepository userRepository;
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFailedAttempt(String username) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            if (attempts >= MAX_FAILED_ATTEMPTS) {
+                user.setLockedUntil(OffsetDateTime.now().plusMinutes(LOCKOUT_DURATION_MINUTES));
+            }
+            userRepository.save(user);
+        });
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificationService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.OffsetDateTime;
+import java.util.Base64;
+
+@Service
+@RequiredArgsConstructor
+public class EmailVerificationService {
+
+    private static final long TOKEN_EXPIRY_HOURS = 24;
+
+    private final UserRepository userRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final TokenHasher tokenHasher;
+    private final EmailService emailService;
+    private final CacheManager cacheManager;
+
+    @Transactional
+    public void generateVerificationEmail(User user) {
+        // Invalidate any previously issued, still-unused tokens for this user.
+        emailVerificationTokenRepository.findAllByUser_IdAndUsedFalse(user.getId())
+                .forEach(token -> token.setUsed(true));
+
+        String rawToken = generateRawToken();
+
+        EmailVerificationToken token = EmailVerificationToken.builder()
+                .user(user)
+                .tokenHash(tokenHasher.hash(rawToken))
+                .expiresAt(OffsetDateTime.now().plusHours(TOKEN_EXPIRY_HOURS))
+                .used(false)
+                .build();
+        emailVerificationTokenRepository.save(token);
+
+        emailService.sendVerificationEmail(user.getEmail(), rawToken);
+    }
+
+    @Transactional
+    public void verifyEmail(String rawToken) {
+        String hash = tokenHasher.hash(rawToken);
+
+        EmailVerificationToken token = emailVerificationTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired verification link"));
+
+        if (token.isUsed()) {
+            throw new InvalidCredentialsException("This verification link has already been used");
+        }
+
+        if (token.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new InvalidCredentialsException("This verification link has expired");
+        }
+
+        User user = userRepository.findById(token.getUser().getId())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired verification link"));
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        token.setUsed(true);
+        emailVerificationTokenRepository.save(token);
+
+        cacheManager.getCache("users").evict(user.getId());
+        cacheManager.getCache("adminUsers").evict(user.getId());
+    }
+
+    @Transactional
+    public void resendVerification(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (!user.isEmailVerified()) {
+                generateVerificationEmail(user);
+            }
+            // Already verified — silently do nothing, same non-enumeration
+            // reasoning as forgotPassword().
+        });
+    }
+
+    private String generateRawToken() {
+        byte[] randomBytes = new byte[32];
+        new SecureRandom().nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/PasswordResetTokenRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
+    Optional<PasswordResetToken> findByTokenHash(String tokenHash);
+    long deleteByUsedTrueOrExpiresAtBefore(OffsetDateTime cutoff);
+    List<PasswordResetToken> findAllByUser_IdAndUsedFalse(UUID userId);
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class EmailService {
+
+    private final JavaMailSender mailSender;
+
+    @Value("${app.mail.reset-password-base-url}")
+    private String resetPasswordBaseUrl;
+
+    @Value("${app.mail.verify-email-base-url}")
+    private String verifyEmailBaseUrl;
+
+    public void sendPasswordResetEmail(String toEmail, String rawToken) {
+        String resetLink = resetPasswordBaseUrl + "?token=" + rawToken;
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Reset your password");
+        message.setText(
+                "We received a request to reset your password.\n\n" +
+                        "Click the link below to choose a new password. This link expires in 30 minutes:\n\n" +
+                        resetLink + "\n\n" +
+                        "If you didn't request this, you can safely ignore this email."
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendVerificationEmail(String toEmail, String rawToken) {
+        String verifyLink = verifyEmailBaseUrl + "?token=" + rawToken;
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Verify your email address");
+        message.setText(
+                "Thanks for signing up!\n\n" +
+                        "Please confirm your email address by clicking the link below. This link expires in 24 hours:\n\n" +
+                        verifyLink + "\n\n" +
+                        "If you didn't create this account, you can safely ignore this email."
+        );
+
+        mailSender.send(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificationTokenRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface EmailVerificationTokenRepository extends JpaRepository<EmailVerificationToken, Long> {
+    Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
+    long deleteByUsedTrueOrExpiresAtBefore(OffsetDateTime cutoff);
+    List<EmailVerificationToken> findAllByUser_IdAndUsedFalse(UUID userId);
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/PasswordResetService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.auth.dto.ForgotPasswordRequest;
+import com.minthanttun.usermanagementsystem.auth.dto.ResetPasswordRequest;
+import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.OffsetDateTime;
+import java.util.Base64;
+
+@Service
+@RequiredArgsConstructor
+public class PasswordResetService {
+
+    private static final long TOKEN_EXPIRY_MINUTES = 30;
+
+    private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TokenHasher tokenHasher;
+    private final EmailService emailService;
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        userRepository.findByEmail(request.email()).ifPresent(user -> {
+            passwordResetTokenRepository.findAllByUser_IdAndUsedFalse(user.getId())
+                    .forEach(token -> token.setUsed(true));
+
+            String rawToken = generateRawToken();
+
+            PasswordResetToken resetToken = PasswordResetToken.builder()
+                    .user(user)
+                    .tokenHash(tokenHasher.hash(rawToken))
+                    .expiresAt(OffsetDateTime.now().plusMinutes(TOKEN_EXPIRY_MINUTES))
+                    .used(false)
+                    .build();
+            passwordResetTokenRepository.save(resetToken);
+
+            emailService.sendPasswordResetEmail(user.getEmail(), rawToken);
+        });
+        // Always returns normally, whether or not the email matched - see AuthController.
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String hash = tokenHasher.hash(request.token());
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(hash)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired reset link"));
+
+        if (resetToken.isUsed()) {
+            throw new InvalidCredentialsException("This reset has already been used");
+        }
+
+        if (resetToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
+            throw new InvalidCredentialsException("This reset link has expired");
+        }
+
+        User user = userRepository.findById(resetToken.getUser().getId())
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired reset link"));
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+    }
+
+    private String generateRawToken() {
+        byte[] randomBytes = new byte[32];
+        new SecureRandom().nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/ChangeStatusRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import jakarta.validation.constraints.NotNull;
+
+public record ChangeStatusRequest (
+        @NotNull(message = "Status is required")
+        AccountStatus status
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/AdminUpdateUserRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record AdminUpdateUserRequest (
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9_]+$",
+                message = "Username may only contain letters, numbers, and underscores"
+        )
+        String username,
+
+        @Email(message = "Email must be a valid email address")
+        @Size(max = 255, message = "Email must not exceed 255 characters")
+        String email,
+
+        @Pattern(
+                regexp = "^\\+?[0-9]{7,15}$",
+                message = "Phone number must be 7-15 digits, optionally starting with +"
+        )
+        String phoneNumber
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/CreateAdminRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record CreateAdminRequest (
+
+        @NotBlank(message = "Username is required")
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9_]+$",
+                message = "Username may only contain letters, numbers, and underscores"
+        )
+        String username,
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email must be a valid email address")
+        @Size(max = 255, message = "Email must not exceed 255 characters")
+        String email,
+
+        @NotBlank(message = "Phone number is required")
+        @Pattern(
+                regexp = "^\\+?[0-9]{7,15}$",
+                message = "Phone number must be 7–15 digits, optionally starting with +"
+        )
+        String phoneNumber,
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        @Pattern(
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+                message = "Password must contain at least one letter and one number"
+        )
+        String password
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/ChangeRoleRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import com.minthanttun.usermanagementsystem.user.Role;
+import jakarta.validation.constraints.NotNull;
+
+public record ChangeRoleRequest (
+        @NotNull(message = "Role is required")
+        Role role
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/AuditLogResponse.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minthanttun.usermanagementsystem.audit.AuditAction;
+import com.minthanttun.usermanagementsystem.audit.AuditLog;
+
+import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.UUID;
+
+public record AuditLogResponse(
+        Long id,
+        UUID actorUserId,
+        UUID targetUserId,
+        AuditAction action,
+        Map<String, Object> details,
+        OffsetDateTime createdAt
+) {
+    public static AuditLogResponse from(AuditLog log, ObjectMapper objectMapper) {
+        Map<String, Object> parsedDetails;
+        try {
+            parsedDetails = log.getDetails() == null
+                    ? Map.of()
+                    : objectMapper.readValue(log.getDetails(), Map.class);
+        } catch (Exception e) {
+            parsedDetails = Map.of("raw", log.getDetails());
+        }
+
+        return new AuditLogResponse(
+                log.getId(),
+                log.getActorUserId(),
+                log.getTargetUserId(),
+                log.getAction(),
+                parsedDetails,
+                log.getCreatedAt()
+        );
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/AdminUserResponse.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+public record AdminUserResponse (
+        UUID id,
+        String username,
+        String email,
+        String phoneNumber,
+        Role role,
+        AccountStatus status,
+        boolean profileComplete,
+        String profileImageUrl,
+        OffsetDateTime createdAt,
+        OffsetDateTime updatedAt
+) {
+    public static AdminUserResponse from (User user) {
+        return new AdminUserResponse(
+          user.getId(),
+          user.getUsername(),
+          user.getEmail(),
+          user.getPhoneNumber(),
+          user.getRole(),
+          user.getStatus(),
+          user.isProfileComplete(),
+          user.getProfileImageUrl(),
+          user.getCreatedAt(),
+          user.getUpdatedAt()
+        );
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/UserSearchCriteria.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin.dto;
+
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.Role;
+
+public record UserSearchCriteria (
+  String search,
+  Role role,
+  AccountStatus status
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/AdminAuditLogController.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.minthanttun.usermanagementsystem.admin.dto.AuditLogResponse;
+import com.minthanttun.usermanagementsystem.audit.AuditAction;
+import com.minthanttun.usermanagementsystem.audit.AuditLogRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/admin/audit-logs")
+@RequiredArgsConstructor
+public class AdminAuditLogController {
+
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<AuditLogResponse> listAuditLogs(
+            @RequestParam(required = false) UUID actorUserId,
+            @RequestParam(required = false) UUID targetUserId,
+            @RequestParam(required = false) AuditAction action,
+            Pageable pageable
+    ) {
+        Specification<com.minthanttun.usermanagementsystem.audit.AuditLog> spec = Specification.allOf(
+                AuditLogSpecifications.hasActor(actorUserId),
+                AuditLogSpecifications.hasTarget(targetUserId),
+                AuditLogSpecifications.hasAction(action)
+        );
+
+        return auditLogRepository.findAll(spec, pageable)
+                .map(log -> AuditLogResponse.from(log, objectMapper));
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/AuditLogSpecifications.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin;
+
+import com.minthanttun.usermanagementsystem.audit.AuditAction;
+import com.minthanttun.usermanagementsystem.audit.AuditLog;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.UUID;
+
+public class AuditLogSpecifications {
+
+    private AuditLogSpecifications() {}
+
+    public static Specification<AuditLog> hasActor(UUID actoruserId) {
+        return ((root, query, cb) -> actoruserId == null ? null : cb.equal(root.get("actorUserId"), actoruserId));
+    }
+
+    public static Specification<AuditLog> hasTarget(UUID targetUserId) {
+        return ((root, query, cb) -> targetUserId == null ? null : cb.equal(root.get("targetUserId"), targetUserId));
+    }
+
+    public static Specification<AuditLog> hasAction(AuditAction action) {
+        return ((root, query, cb) -> action == null ? null : cb.equal(root.get("action"), action));
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/AdminUserService.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin;
+
+import com.minthanttun.usermanagementsystem.admin.dto.AdminUpdateUserRequest;
+import com.minthanttun.usermanagementsystem.admin.dto.AdminUserResponse;
+import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
+import com.minthanttun.usermanagementsystem.admin.dto.UserSearchCriteria;
+import com.minthanttun.usermanagementsystem.audit.AuditAction;
+import com.minthanttun.usermanagementsystem.audit.AuditService;
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.LastAdminException;
+import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AdminUserService {
+
+    private final UserRepository userRepository;
+    private final AuditService auditService;
+    private final PasswordEncoder passwordEncoder;
+
+    public Page<User> listUsers(UserSearchCriteria criteria, Pageable pageable) {
+        Specification<User> spec = Specification.allOf(
+                UserSpecifications.matchesSearchTerm(criteria.search()),
+                UserSpecifications.hasRole(criteria.role()),
+                UserSpecifications.hasStatus(criteria.status())
+        );
+
+        return userRepository.findAll(spec, pageable);
+    }
+
+    // Internal use only - for mutation methods that need a live, transaction entity.
+    public User getUser(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    }
+
+    // Used only by the GET /{id} read endpoint - cached, DTO-returning.
+    @Cacheable(value = "adminUsers", key = "#id")
+    public AdminUserResponse getCachedUserResponse(UUID id) {
+        return AdminUserResponse.from(getUser(id));
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
+    public User updateUser(UUID id, AdminUpdateUserRequest request, User actor) {
+        User user = getUser(id);
+
+        String beforeUsername = user.getUsername();
+        String beforeEmail = user.getEmail();
+        String beforePhoneNumber = user.getPhoneNumber();
+
+        if(request.username() != null && !request.username().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.username())) {
+                throw new DuplicateResourceException("Username is already taken");
+            }
+            user.setUsername(request.username());
+        }
+
+        if(request.email() != null && !request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
+                throw new DuplicateResourceException("Email is already registered");
+            }
+            user.setEmail(request.email());
+        }
+
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
+            if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+                throw new DuplicateResourceException("Phone number is already registered");
+            }
+            user.setPhoneNumber(request.phoneNumber());
+        }
+
+        User saved = userRepository.save(user);
+
+        boolean actuallyChanged = !beforeUsername.equals(saved.getUsername())
+                || !beforeEmail.equals(saved.getEmail())
+                || !java.util.Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
+
+        if (actuallyChanged) {
+            auditService.log(
+                    actor.getId(),
+                    saved.getId(),
+                    AuditAction.UPDATE,
+                    Map.of(
+                            "before", Map.of(
+                                    "username", beforeUsername,
+                                    "email", beforeEmail,
+                                    "phoneNumber", beforePhoneNumber == null ? "" : beforePhoneNumber
+                            ),
+                            "after", Map.of(
+                                    "username", saved.getUsername(),
+                                    "email", saved.getEmail(),
+                                    "phoneNumber", saved.getPhoneNumber() == null ? "" : saved.getPhoneNumber()
+                            )
+                    )
+            );
+        }
+
+        return saved;
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
+    public User updateStatus(UUID id, AccountStatus newStatus, User actor) {
+        User target = getUser(id);
+
+        if (target.getStatus() == newStatus) {
+            return target; //nothing to do
+        }
+
+        boolean isDemotingActiveAdmin = target.getRole() == Role.ADMIN && target.getStatus() == AccountStatus.ACTIVE && newStatus == AccountStatus.SUSPENDED;
+
+        if (isDemotingActiveAdmin) {
+            long activeAdminCount = userRepository.countByRoleAndStatus(Role.ADMIN, AccountStatus.ACTIVE);
+            if (activeAdminCount <= 1) {
+                throw new LastAdminException("Cannot suspend the last remaining admin");
+            }
+        }
+
+        AccountStatus previousStatus = target.getStatus();
+        target.setStatus(newStatus);
+        User saved = userRepository.save(target);
+
+        auditService.log(
+                actor.getId(),
+                target.getId(),
+                newStatus == AccountStatus.SUSPENDED ? AuditAction.SUSPEND : AuditAction.REACTIVATE,
+                Map.of("before", previousStatus.name(), "after", newStatus.name())
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
+    public User updateRole(UUID id, Role newRole, User actor) {
+        User target = getUser(id);
+
+        if (target.getRole() == newRole) {
+            return target; //nothing to do
+        }
+
+        boolean isDemotingActiveAdmin = target.getRole() == Role.ADMIN && target.getStatus() == AccountStatus.ACTIVE && newRole == Role.USER;
+
+        if (isDemotingActiveAdmin) {
+            long activeAdminCount = userRepository.countByRoleAndStatus(Role.ADMIN, AccountStatus.ACTIVE);
+            if (activeAdminCount <= 1) {
+                throw new LastAdminException("Cannot demote the last remaining active admin");
+            }
+        }
+
+        Role previousRole = target.getRole();
+        target.setRole(newRole);
+        User saved = userRepository.save(target);
+
+        auditService.log(
+                actor.getId(),
+                target.getId(),
+                AuditAction.ROLE_CHANGE,
+                Map.of("before", previousRole.name(), "after", newRole.name())
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public User createAdmin(CreateAdminRequest request, User actor) {
+        if (userRepository.existsByUsername(request.username())) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateResourceException("Email is already registered");
+        }
+        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new DuplicateResourceException("Phone number is already registered");
+        }
+
+        User newAdmin = User.builder()
+                .username(request.username())
+                .email(request.email())
+                .phoneNumber(request.phoneNumber())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .role(Role.ADMIN)
+                .build();
+
+        User saved = userRepository.save(newAdmin);
+
+        auditService.log(
+                actor.getId(),
+                saved.getId(),
+                AuditAction.ADMIN_CREATED,
+                Map.of("username", saved.getUsername(), "email", saved.getEmail())
+        );
+
+        return saved;
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/UserSpecifications.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin;
+
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+import org.springframework.data.jpa.domain.Specification;
+
+public class UserSpecifications {
+
+    private UserSpecifications() {}
+
+    public static Specification<User> hasRole(Role role) {
+        return (root, query, cb) -> role == null ? null : cb.equal(root.get("role"), role);
+    }
+
+    public static Specification<User> hasStatus(AccountStatus status) {
+        return (root, query, cb) -> status == null ? null : cb.equal(root.get("status"), status);
+    }
+
+    public static Specification<User> matchesSearchTerm(String search) {
+        return ((root, query, cb) -> {
+            if (search == null || search.isBlank()) {
+                return null;
+            }
+            String pattern = "%" + search.toLowerCase() + "%";
+            return cb.or(
+                    cb.like(cb.lower(root.get("username")), pattern),
+                    cb.like(cb.lower(root.get("email")), pattern),
+                    cb.like(root.get("phoneNumber"), pattern)
+            );
+        });
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/AdminUserController.java
+============================================================
+package com.minthanttun.usermanagementsystem.admin;
+
+import com.minthanttun.usermanagementsystem.admin.dto.*;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.Role;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/admin/users")
+@RequiredArgsConstructor
+public class AdminUserController {
+
+    private final AdminUserService adminUserService;
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<AdminUserResponse> listUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) AccountStatus status,
+            Pageable pageable
+    ) {
+        UserSearchCriteria criteria = new UserSearchCriteria(search, role, status);
+        return adminUserService.listUsers(criteria, pageable).map(AdminUserResponse::from);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AdminUserResponse getUsers(@PathVariable UUID id) {
+        return adminUserService.getCachedUserResponse(id);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AdminUserResponse updateUser(
+            @PathVariable UUID id,
+            @Valid @RequestBody AdminUpdateUserRequest request,
+            @AuthenticationPrincipal CustomUserDetails actor
+    ) {
+        User updated = adminUserService.updateUser(id, request, actor.getUser());
+        return AdminUserResponse.from(updated);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AdminUserResponse updateStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody ChangeStatusRequest request,
+            @AuthenticationPrincipal CustomUserDetails actor
+    ) {
+        User updated = adminUserService.updateStatus(id, request.status(), actor.getUser());
+        return AdminUserResponse.from(updated);
+    }
+
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AdminUserResponse updateRole(
+            @PathVariable UUID id,
+            @Valid @RequestBody ChangeRoleRequest request,
+            @AuthenticationPrincipal CustomUserDetails actor
+    ) {
+        User updated = adminUserService.updateRole(id, request.role(), actor.getUser());
+        return AdminUserResponse.from(updated);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AdminUserResponse> createAdmin(
+            @Valid @RequestBody CreateAdminRequest request,
+            @AuthenticationPrincipal CustomUserDetails actor
+    ) {
+        User created = adminUserService.createAdmin(request, actor.getUser());
+        return ResponseEntity.status(HttpStatus.CREATED).body(AdminUserResponse.from(created));
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/ChangePasswordRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.user.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record ChangePasswordRequest (
+
+        @NotBlank(message = "Current password is required")
+        String currentPassword,
+
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        @Pattern(
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+                message = "Password must contain at least one letter and one number"
+        )
+        String newPassword
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/CompleteProfileRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.user.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record CompleteProfileRequest (
+        @NotBlank(message = "Username is required")
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9_]+$",
+                message = "Username may only contain letters, numbers, and underscores"
+        )
+        String username,
+
+        @NotBlank(message = "Phone number is required")
+        @Pattern(
+                regexp = "^\\+?[0-9]{7,15}$",
+                message = "Phone number must be 7-15 digits, optionally staring with +"
+        )
+        String phoneNumber
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/UserResponse.java
+============================================================
+package com.minthanttun.usermanagementsystem.user.dto;
+
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+
+import java.util.UUID;
+
+public record UserResponse(
+        UUID id,
+        String username,
+        String email,
+        String phoneNumber,
+        Role role,
+        String profileImageUrl
+) {
+    public static UserResponse from(User user) {
+        return new UserResponse(
+                user.getId(), user.getUsername(), user.getEmail(),
+                user.getPhoneNumber(), user.getRole(), user.getProfileImageUrl()
+        );
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/UpdateProfileRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.user.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record UpdateProfileRequest (
+
+        @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+        @Pattern(
+                regexp = "^[a-zA-Z0-9_]+$",
+                message = "Username may only contain letters, numbers, and underscores"
+        )
+        String username,
+
+        @Email(message = "Email must be a valid email address")
+        @Size(max = 255, message = "Email must not exceed 255 characters")
+        String email,
+
+        @Pattern(
+                regexp = "^\\+?[0-9]{7,15}$",
+                message = "Phone number must be 7-15 digits, optionally starting with +"
+        )
+        String phoneNumber
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/SetInitialPasswordRequest.java
+============================================================
+package com.minthanttun.usermanagementsystem.user.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record SetInitialPasswordRequest (
+
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        @Pattern(
+                regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+                message = "Password must contain at least one letter and one number"
+        )
+        String newPassword
+) {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/ProfileImageService.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import com.cloudinary.Transformation;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class ProfileImageService {
+
+    private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+    private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/webp");
+    private static final List<String> ALLOWED_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
+
+    private final Cloudinary cloudinary;
+
+    public String uploadImage(MultipartFile file, UUID userId) {
+        validate(file);
+
+        try {
+            Map<String, Object> uploadOptions = ObjectUtils.asMap(
+                    "public_id", avatarPublicId(userId),
+                    "overwrite", true,
+                    "transformation", new Transformation()
+                            .width(300)
+                            .height(300)
+                            .crop("fill")
+                            .gravity("face")
+            );
+
+            Map uploadResult = cloudinary.uploader()
+                    .upload(file.getBytes(), uploadOptions);
+
+            return (String) uploadResult.get("secure_url");
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload profile image", e);
+        }
+    }
+
+    public void deleteImage(UUID userId) {
+        try {
+            cloudinary.uploader().destroy(avatarPublicId(userId), ObjectUtils.emptyMap());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete profile image", e);
+        }
+    }
+
+    private void validate(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE_BYTES) {
+            throw new IllegalArgumentException("File exceeds maximum size of 5MB");
+        }
+
+        String contentType = file.getContentType();
+        boolean validContentType = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase());
+
+        String filename = file.getOriginalFilename();
+        String extension = filename != null && filename.contains(".")
+                ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase()
+                : "";
+        boolean validExtension = ALLOWED_EXTENSIONS.contains(extension);
+
+        if (!validContentType && !validExtension) {
+            throw new IllegalArgumentException("Only JPEG, PNG, and WebP images are allowed");
+        }
+    }
+
+    private String avatarPublicId(UUID userId) {
+        return "profile-images/" + userId + "/avatar";
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/UserService.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
+import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
+import com.minthanttun.usermanagementsystem.user.dto.CompleteProfileRequest;
+import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
+import com.minthanttun.usermanagementsystem.user.dto.UpdateProfileRequest;
+import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ProfileImageService profileImageService;
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#currentUser.id"),
+            @CacheEvict(value = "adminUsers", key = "#currentUser.id")
+    })
+    public User updateProfile(User currentUser, UpdateProfileRequest request) {
+
+        if (request.username() != null && !request.username().equals(currentUser.getUsername())) {
+            if (userRepository.existsByUsername(request.username())) {
+                throw new DuplicateResourceException("Username is already taken");
+            }
+            currentUser.setUsername(request.username());
+        }
+
+        if (request.email() != null && !request.email().equals(currentUser.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
+                throw new DuplicateResourceException("Email is already registered");
+            }
+            currentUser.setEmail(request.email());
+        }
+
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(currentUser.getPhoneNumber())) {
+            if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+                throw new DuplicateResourceException("Phone number is already registered");
+            }
+            currentUser.setPhoneNumber(request.phoneNumber());
+        }
+
+        return userRepository.save(currentUser);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
+    public User uploadProfilePhoto(User user, MultipartFile file) {
+        String imageUrl = profileImageService.uploadImage(file, user.getId());
+        user.setProfileImageUrl(imageUrl);
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
+    public User deleteProfilePhoto(User user) {
+        if (user.getProfileImageUrl() != null) {
+            profileImageService.deleteImage(user.getId());
+            user.setProfileImageUrl(null);
+            return userRepository.save(user);
+        }
+        return user;
+    }
+
+    @Transactional
+    public void changePassword(User currentUser, ChangePasswordRequest request) {
+        if (currentUser.getPasswordHash() == null) {
+            throw new InvalidCredentialsException("This account has no password set yet. Use the set-password endpoint instead.");
+        }
+
+        if (!passwordEncoder.matches(request.currentPassword(), currentUser.getPasswordHash())) {
+            throw new InvalidCredentialsException("Current password is incorrect");
+        }
+
+        currentUser.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(currentUser);
+    }
+
+    @Transactional
+    public void setInitialPassword(User currentUser, SetInitialPasswordRequest request) {
+        if (currentUser.getPasswordHash() != null) {
+            throw new InvalidCredentialsException("This account already has a password. Use the change-password endpoint instead.");
+        }
+
+        currentUser.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(currentUser);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
+    })
+    public User completeProfile(User user, CompleteProfileRequest request) {
+        if (user.isProfileComplete()) {
+            throw new ProfileIncompleteException("Profile is already complete");
+        }
+
+        if (userRepository.existsByUsername(request.username())) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+
+        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new DuplicateResourceException("Phone number is already registered");
+        }
+
+        user.setUsername(request.username());
+        user.setPhoneNumber(request.phoneNumber());
+        return userRepository.save(user);
+    }
+
+    @Cacheable(value = "users", key = "#userId")
+    public UserResponse getCachedProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        return UserResponse.from(user);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/User.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(unique = true, length = 50)
+    private String username;
+
+    @Column(nullable = false, unique = true, length = 235)
+    private String email;
+
+    @Column(name = "phone_number", unique = true, length = 20)
+    private String phoneNumber;
+
+    @Column(name = "password_hashed", length = 255)
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    @Builder.Default
+    private Role role = Role.USER;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    @Builder.Default
+    private AccountStatus status = AccountStatus.ACTIVE;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    @Builder.Default
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private OffsetDateTime lockedUntil;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    public boolean isProfileComplete() {
+        return username != null && phoneNumber != null;
+    }
+
+    public boolean isLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now());
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/AccountStatus.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+public enum AccountStatus {
+    ACTIVE,
+    SUSPENDED
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/UserRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor {
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    boolean existsByPhoneNumber(String phoneNumber);
+    long countByRoleAndStatus(Role role, AccountStatus status);
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/Role.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+public enum Role {
+    USER,
+    ADMIN
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/UserController.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.user.dto.*;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+    private final ProfileImageService profileImageService;
+
+    @GetMapping("/me")
+    public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return userService.getCachedProfile(userDetails.getUser().getId());
+    }
+
+    @PatchMapping("/me")
+    public UserResponse updateProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+        User updated = userService.updateProfile(userDetails.getUser(), request);
+        return UserResponse.from(updated);
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        userService.changePassword(userDetails.getUser(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    //singup with oauth, dont have local password
+    @PutMapping("/me/password/initial")
+    public ResponseEntity<Void> setInitialPassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SetInitialPasswordRequest request
+    ) {
+        userService.setInitialPassword(userDetails.getUser(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/me/photo")
+    public UserResponse uploadProfilePhoto(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam("file") MultipartFile file
+    ) {
+        User updated = userService.uploadProfilePhoto(userDetails.getUser(), file);
+        return UserResponse.from(updated);
+    }
+
+    @DeleteMapping("/me/photo")
+    public UserResponse deleteProfilePhoto(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        User updated = userService.deleteProfilePhoto(userDetails.getUser());
+        return UserResponse.from(updated);
+    }
+
+    @PostMapping("/me/complete-profile")
+    public UserResponse completeProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody CompleteProfileRequest request
+    ) {
+        User updated = userService.completeProfile(userDetails.getUser(), request);
+        return UserResponse.from(updated);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/TokenCleanupJob.java
+============================================================
+package com.minthanttun.usermanagementsystem.common;
+
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationTokenRepository;
+import com.minthanttun.usermanagementsystem.auth.PasswordResetTokenRepository;
+import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class TokenCleanupJob {
+
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+
+    @Scheduled(cron = "0 0 3 * * *") //everyday at 3AM server time
+    @Transactional
+    public void cleanUpExpiredTokens() {
+        OffsetDateTime now = OffsetDateTime.now();
+
+        long refreshDeleted = refreshTokenRepository.deleteByRevokedTrueOrExpiresAtBefore(now);
+        long resetDeleted = passwordResetTokenRepository.deleteByUsedTrueOrExpiresAtBefore(now);
+        long verificationDeleted = emailVerificationTokenRepository.deleteByUsedTrueOrExpiresAtBefore(now);
+
+        log.info("Token cleanup: removed {} refresh tokens, {} password reset tokens, {} email verification tokens",
+                refreshDeleted, resetDeleted, verificationDeleted);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/ResourceNotFoundException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super (message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/DuplicateResourceException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class DuplicateResourceException extends RuntimeException {
+    public DuplicateResourceException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/InvalidCredentialsException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class InvalidCredentialsException extends RuntimeException {
+    public InvalidCredentialsException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/LastAdminException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class LastAdminException extends RuntimeException {
+    public LastAdminException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/GlobalExceptionHandler.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ProblemDetail handleDuplicate(DuplicateResourceException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Duplicate Resource");
+        return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors()
+                .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "One or more fields failed validation");
+        problem.setTitle("Validation Failed");
+        problem.setProperty("errors", fieldErrors);
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Authentication Failed");
+        return problem;
+    }
+
+    @ExceptionHandler(AccountSuspendedException.class)
+    public ProblemDetail handleSuspended(AccountSuspendedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Account Suspended");
+        return problem;
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Resource Not Found");
+        return problem;
+    }
+
+    @ExceptionHandler(LastAdminException.class)
+    public ProblemDetail handleLastAdmin(LastAdminException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Cannot Remove Last Admin");
+        return problem;
+    }
+
+    @ExceptionHandler(ProfileIncompleteException.class)
+    public ProblemDetail handleProfileIncomplete(ProfileIncompleteException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Profile Incomplete");
+        problem.setProperty("action", "complete_profile");
+        return problem;
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ProblemDetail handleEmailNotVerified(EmailNotVerifiedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problem.setTitle("Email Not Verified");
+        problem.setProperty("action", "resend_verification");
+        return problem;
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/AccountSuspendedException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class AccountSuspendedException extends RuntimeException {
+    public AccountSuspendedException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/ProfileIncompleteException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class ProfileIncompleteException extends RuntimeException {
+    public ProfileIncompleteException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/EmailNotVerifiedException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class EmailNotVerifiedException extends RuntimeException {
+    public EmailNotVerifiedException(String message) {
+        super(message);
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/audit/AuditLog.java
+============================================================
+package com.minthanttun.usermanagementsystem.audit;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "audit_logs")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
+public class AuditLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "actor_user_id")
+    private UUID actorUserId;
+
+    @Column(name = "target_user_id")
+    private UUID targetUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private AuditAction action;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String details;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/audit/AuditAction.java
+============================================================
+package com.minthanttun.usermanagementsystem.audit;
+
+public enum AuditAction {
+    ROLE_CHANGE,
+    SUSPEND,
+    REACTIVATE,
+    UPDATE,
+    ADMIN_CREATED
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/audit/AuditLogRepository.java
+============================================================
+package com.minthanttun.usermanagementsystem.audit;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/audit/AuditService.java
+============================================================
+package com.minthanttun.usermanagementsystem.audit;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AuditService {
+
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
+
+    public void log(UUID actorUserId, UUID targetUserId, AuditAction action, Map<String, Object> details) {
+        String detailsJson;
+        try {
+            detailsJson = objectMapper.writeValueAsString(details);
+        } catch (Exception e) {
+            detailsJson = "{}";
+        }
+
+        AuditLog entry = AuditLog.builder()
+                .actorUserId(actorUserId)
+                .targetUserId(targetUserId)
+                .action(action)
+                .details(detailsJson)
+                .build();
+
+        auditLogRepository.save(entry);
+    }
+}
+

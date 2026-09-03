@@ -31,11 +31,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        System.out.println("===== JWT FILTER =====");
-        System.out.println("URI: " + request.getRequestURI());
-        System.out.println("METHOD: " + request.getMethod());
-        System.out.println("Authorization: " + request.getHeader("Authorization"));
-        System.out.println("Content-Type: " + request.getContentType());
+//        System.out.println("===== JWT FILTER =====");
+//        System.out.println("URI: " + request.getRequestURI());
+//        System.out.println("METHOD: " + request.getMethod());
+//        System.out.println("Authorization: " + request.getHeader("Authorization"));
+//        System.out.println("Content-Type: " + request.getContentType());
 
         String authHeader = request.getHeader("Authorization");
 
@@ -45,10 +45,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        System.out.println("Token present: " + !token.isBlank());
-        System.out.println("Token valid: " + jwtService.isTokenValid(token));
-        System.out.println("Token expired: " + jwtService.isTokenExpired(token));
-        System.out.println("Token type: " + jwtService.extractTokenType(token));
+//        System.out.println("Token present: " + !token.isBlank());
+//        System.out.println("Token valid: " + jwtService.isTokenValid(token));
+//        System.out.println("Token expired: " + jwtService.isTokenExpired(token));
+//        System.out.println("Token type: " + jwtService.extractTokenType(token));
 
         if (!jwtService.isTokenValid(token) || jwtService.isTokenExpired(token)) {
             filterChain.doFilter(request, response);
@@ -86,9 +86,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            System.out.println(">>> JWT AUTHENTICATION SUCCESS");
-            System.out.println("User ID: " + customUserDetails.getUser().getId());
-            System.out.println("Profile complete: " + customUserDetails.getUser().isProfileComplete());
+//            System.out.println(">>> JWT AUTHENTICATION SUCCESS");
+//            System.out.println("User ID: " + customUserDetails.getUser().getId());
+//            System.out.println("Profile complete: " + customUserDetails.getUser().isProfileComplete());
 
             var authToken = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities()

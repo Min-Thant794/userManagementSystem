@@ -5,6 +5,7 @@ import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class EmailVerificationService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final TokenHasher tokenHasher;
     private final EmailService emailService;
+    private final CacheManager cacheManager;
 
     @Transactional
     public void generateVerificationEmail(User user) {
@@ -59,11 +61,15 @@ public class EmailVerificationService {
 
         User user = userRepository.findById(token.getUser().getId())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired verification link"));
+
         user.setEmailVerified(true);
         userRepository.save(user);
 
         token.setUsed(true);
         emailVerificationTokenRepository.save(token);
+
+        cacheManager.getCache("users").evict(user.getId());
+        cacheManager.getCache("adminUsers").evict(user.getId());
     }
 
     @Transactional

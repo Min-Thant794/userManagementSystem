@@ -1,6 +1,7 @@
 package com.minthanttun.usermanagementsystem.admin;
 
 import com.minthanttun.usermanagementsystem.admin.dto.AdminUpdateUserRequest;
+import com.minthanttun.usermanagementsystem.admin.dto.AdminUserResponse;
 import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
 import com.minthanttun.usermanagementsystem.admin.dto.UserSearchCriteria;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
@@ -13,6 +14,9 @@ import com.minthanttun.usermanagementsystem.user.Role;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -41,11 +45,23 @@ public class AdminUserService {
         return userRepository.findAll(spec, pageable);
     }
 
+    // Internal use only - for mutation methods that need a live, transaction entity.
     public User getUser(UUID id) {
-        return userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    }
+
+    // Used only by the GET /{id} read endpoint - cached, DTO-returning.
+    @Cacheable(value = "adminUsers", key = "#id")
+    public AdminUserResponse getCachedUserResponse(UUID id) {
+        return AdminUserResponse.from(getUser(id));
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
     public User updateUser(UUID id, AdminUpdateUserRequest request, User actor) {
         User user = getUser(id);
 
@@ -68,7 +84,7 @@ public class AdminUserService {
         }
 
         if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
-            if (userRepository.existsByEmail(request.phoneNumber())) {
+            if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
                 throw new DuplicateResourceException("Phone number is already registered");
             }
             user.setPhoneNumber(request.phoneNumber());
@@ -104,6 +120,10 @@ public class AdminUserService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
     public User updateStatus(UUID id, AccountStatus newStatus, User actor) {
         User target = getUser(id);
 
@@ -135,6 +155,10 @@ public class AdminUserService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "adminUsers", key = "#id"),
+            @CacheEvict(value = "users", key = "#id")
+    })
     public User updateRole(UUID id, Role newRole, User actor) {
         User target = getUser(id);
 

@@ -39,7 +39,7 @@ public class AdminUserController {
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse getUsers(@PathVariable UUID id) {
-        return AdminUserResponse.from(adminUserService.getUser(id));
+        return adminUserService.getCachedUserResponse(id);
     }
 
     @PutMapping("/{id}")
