@@ -59,7 +59,7 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        emailVerificationService.generateVerificationEmail(saved);
+        emailVerificationService.generateVerificationEmail(saved, saved.getEmail());
 
         return saved;
     }

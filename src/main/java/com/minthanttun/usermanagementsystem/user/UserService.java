@@ -1,5 +1,6 @@
 package com.minthanttun.usermanagementsystem.user;
 
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationService;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
@@ -27,36 +28,38 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProfileImageService profileImageService;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "users", key = "#currentUser.id"),
             @CacheEvict(value = "adminUsers", key = "#currentUser.id")
     })
-    public User updateProfile(User currentUser, UpdateProfileRequest request) {
+    public User updateProfile(User user, UpdateProfileRequest request) {
 
-        if (request.username() != null && !request.username().equals(currentUser.getUsername())) {
+        if (request.username() != null && !request.username().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.username())) {
                 throw new DuplicateResourceException("Username is already taken");
             }
-            currentUser.setUsername(request.username());
+            user.setUsername(request.username());
         }
 
-        if (request.email() != null && !request.email().equals(currentUser.getEmail())) {
-            if (userRepository.existsByEmail(request.email())) {
+        if (request.email() != null && !request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email()) || userRepository.existsByPendingEmail(request.email())) {
                 throw new DuplicateResourceException("Email is already registered");
             }
-            currentUser.setEmail(request.email());
+            user.setPendingEmail(request.email());
+            emailVerificationService.generateVerificationEmail(user, request.email());
         }
 
-        if (request.phoneNumber() != null && !request.phoneNumber().equals(currentUser.getPhoneNumber())) {
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
             if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
                 throw new DuplicateResourceException("Phone number is already registered");
             }
-            currentUser.setPhoneNumber(request.phoneNumber());
+            user.setPhoneNumber(request.phoneNumber());
         }
 
-        return userRepository.save(currentUser);
+        return userRepository.save(user);
     }
 
     @Transactional

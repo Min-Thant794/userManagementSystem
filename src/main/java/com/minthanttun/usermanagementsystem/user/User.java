@@ -42,6 +42,9 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
+    @Column(name = "pending_email", length = 255)
+    private String pendingEmail;
+
     @Column(name = "email_verified", nullable = false)
     @Builder.Default
     private boolean emailVerified = false;

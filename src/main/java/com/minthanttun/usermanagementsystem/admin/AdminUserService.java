@@ -25,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Objects;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Service
@@ -92,9 +94,9 @@ public class AdminUserService {
 
         User saved = userRepository.save(user);
 
-        boolean actuallyChanged = !beforeUsername.equals(saved.getUsername())
-                || !beforeEmail.equals(saved.getEmail())
-                || !java.util.Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
+        boolean actuallyChanged = !Objects.equals(beforeUsername, saved.getUsername())
+                || !Objects.equals(beforeEmail, saved.getEmail())
+                || !Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
 
         if (actuallyChanged) {
             auditService.log(
@@ -102,15 +104,15 @@ public class AdminUserService {
                     saved.getId(),
                     AuditAction.UPDATE,
                     Map.of(
-                            "before", Map.of(
+                            "before", nullSafeMap(
                                     "username", beforeUsername,
                                     "email", beforeEmail,
-                                    "phoneNumber", beforePhoneNumber == null ? "" : beforePhoneNumber
+                                    "phoneNumber", beforePhoneNumber
                             ),
-                            "after", Map.of(
+                            "after", nullSafeMap(
                                     "username", saved.getUsername(),
                                     "email", saved.getEmail(),
-                                    "phoneNumber", saved.getPhoneNumber() == null ? "" : saved.getPhoneNumber()
+                                    "phoneNumber", saved.getPhoneNumber()
                             )
                     )
             );
@@ -219,5 +221,13 @@ public class AdminUserService {
         );
 
         return saved;
+    }
+
+    private Map<String, Object> nullSafeMap(String k1, String v1, String k2, String v2, String k3, String v3) {
+        Map<String, Object> map = new HashMap<>();
+        map.put(k1, v1 == null ? "" : v1);
+        map.put(k2, v2 == null ? "" : v2);
+        map.put(k3, v3 == null ? "" : v3);
+        return map;
     }
 }

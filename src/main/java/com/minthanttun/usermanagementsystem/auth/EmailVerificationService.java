@@ -1,5 +1,6 @@
 package com.minthanttun.usermanagementsystem.auth;
 
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
@@ -26,7 +27,7 @@ public class EmailVerificationService {
     private final CacheManager cacheManager;
 
     @Transactional
-    public void generateVerificationEmail(User user) {
+    public void generateVerificationEmail(User user, String targetEmail) {
         // Invalidate any previously issued, still-unused tokens for this user.
         emailVerificationTokenRepository.findAllByUser_IdAndUsedFalse(user.getId())
                 .forEach(token -> token.setUsed(true));
@@ -41,7 +42,7 @@ public class EmailVerificationService {
                 .build();
         emailVerificationTokenRepository.save(token);
 
-        emailService.sendVerificationEmail(user.getEmail(), rawToken);
+        emailService.sendVerificationEmail(targetEmail, rawToken);
     }
 
     @Transactional
@@ -62,6 +63,16 @@ public class EmailVerificationService {
         User user = userRepository.findById(token.getUser().getId())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired verification link"));
 
+        if (user.getPendingEmail() != null) {
+            //re-check uniqueness at verify-time too - someone else could have claimed this email between the change
+            // request and now.
+            if (userRepository.existsByEmail(user.getPendingEmail())) {
+                throw new DuplicateResourceException("This email is no longer available");
+            }
+            user.setEmail(user.getPendingEmail());
+            user.setPendingEmail(null);
+        }
+
         user.setEmailVerified(true);
         userRepository.save(user);
 
@@ -76,7 +87,8 @@ public class EmailVerificationService {
     public void resendVerification(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             if (!user.isEmailVerified()) {
-                generateVerificationEmail(user);
+                String targetEmail = user.getPendingEmail() != null ? user.getPendingEmail() : user.getEmail();
+                generateVerificationEmail(user, targetEmail);
             }
             // Already verified — silently do nothing, same non-enumeration
             // reasoning as forgotPassword().
