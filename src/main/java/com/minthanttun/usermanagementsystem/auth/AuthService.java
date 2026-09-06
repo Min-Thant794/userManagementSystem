@@ -2,10 +2,7 @@ package com.minthanttun.usermanagementsystem.auth;
 
 import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
-import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedException;
-import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
-import com.minthanttun.usermanagementsystem.common.exception.EmailNotVerifiedException;
-import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.common.exception.*;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
@@ -98,7 +95,7 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        return tokenIssuer.issueTokenPair(user);
+        return tokenIssuer.issueNewSession(user);
     }
 
     @Transactional
@@ -108,12 +105,19 @@ public class AuthService {
         RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
 
-        if (tokenEntity.isRevoked()) {
-            throw new InvalidCredentialsException("Refresh token has been revoked");
-        }
-
         if (tokenEntity.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new InvalidCredentialsException("Refresh token has expired");
+        }
+
+        //atomic compare-and-swap: only one concurrent request can win this/
+        int rowsUpdated = refreshTokenRepository.revokeIfActive(tokenEntity.getId());
+
+        if (rowsUpdated == 0) {
+            //someone already consumed this exact token. Either a genuine race
+            // (rare) or a stolen token being replayed - treat both as compromise
+            // and kill the whole lineage, forcing a fresh login.
+            refreshTokenRepository.revokeFamily(tokenEntity.getFamilyId());
+            throw new RefreshTokenReuseException("This session has been comprimised or reused. Please log in again");
         }
 
         User user = tokenEntity.getUser();
@@ -121,11 +125,7 @@ public class AuthService {
             throw new AccountSuspendedException("This account has been suspended");
         }
 
-        // Rotate: revoke the old refresh token, issue a brand new pair.
-        tokenEntity.setRevoked(true);
-        refreshTokenRepository.save(tokenEntity);
-
-        return tokenIssuer.issueTokenPair(user);
+        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId());
     }
 
     @Transactional

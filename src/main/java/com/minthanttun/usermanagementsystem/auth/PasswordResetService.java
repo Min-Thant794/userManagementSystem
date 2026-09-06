@@ -3,6 +3,7 @@ package com.minthanttun.usermanagementsystem.auth;
 import com.minthanttun.usermanagementsystem.auth.dto.ForgotPasswordRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.ResetPasswordRequest;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
@@ -26,6 +27,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final TokenHasher tokenHasher;
     private final EmailService emailService;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -71,6 +73,8 @@ public class PasswordResetService {
 
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);
+
+        sessionRevocationService.revokeAllSessions(user.getId());
     }
 
     private String generateRawToken() {

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -24,7 +25,12 @@ public class TokenIssuer {
     public record IssuedTokens(String accessToken, String refreshToken, long refreshTokenExpiryMs) {}
 
     @Transactional
-    public IssuedTokens issueTokenPair(User user) {
+    public IssuedTokens issueNewSession(User user) {
+        return issueTokenPair(user, UUID.randomUUID());
+    }
+
+    @Transactional
+    public IssuedTokens issueTokenPair(User user, UUID familyId) {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
@@ -33,6 +39,7 @@ public class TokenIssuer {
                 .tokenHash(tokenHasher.hash(refreshToken))
                 .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
                 .revoked(false)
+                .familyId(familyId)
                 .build();
         refreshTokenRepository.save(tokenEntity);
 

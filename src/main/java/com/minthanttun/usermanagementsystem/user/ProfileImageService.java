@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -17,18 +19,21 @@ import java.util.UUID;
 public class ProfileImageService {
 
     private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-    private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/webp");
-    private static final List<String> ALLOWED_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
+    private static final int MIN_DIMENSION_PX = 50;
+    private static final int MAX_DIMENSION_PX = 4000;
 
     private final Cloudinary cloudinary;
 
     public String uploadImage(MultipartFile file, UUID userId) {
-        validate(file);
-
         try {
+            byte[] bytes = file.getBytes();
+            validateAndDecode(file, bytes);
+
             Map<String, Object> uploadOptions = ObjectUtils.asMap(
                     "public_id", avatarPublicId(userId),
                     "overwrite", true,
+                    "format", "jpg",
+                    "quality", "auto:good",
                     "transformation", new Transformation()
                             .width(300)
                             .height(300)
@@ -36,9 +41,7 @@ public class ProfileImageService {
                             .gravity("face")
             );
 
-            Map uploadResult = cloudinary.uploader()
-                    .upload(file.getBytes(), uploadOptions);
-
+            Map uploadResult = cloudinary.uploader().upload(bytes, uploadOptions);
             return (String) uploadResult.get("secure_url");
 
         } catch (IOException e) {
@@ -54,7 +57,7 @@ public class ProfileImageService {
         }
     }
 
-    private void validate(MultipartFile file) {
+    private void validateAndDecode(MultipartFile file, byte[] bytes) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
@@ -63,17 +66,24 @@ public class ProfileImageService {
             throw new IllegalArgumentException("File exceeds maximum size of 5MB");
         }
 
-        String contentType = file.getContentType();
-        boolean validContentType = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase());
+        BufferedImage image;
+        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
+            image = ImageIO.read(stream);
+        }
 
-        String filename = file.getOriginalFilename();
-        String extension = filename != null && filename.contains(".")
-                ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase()
-                : "";
-        boolean validExtension = ALLOWED_EXTENSIONS.contains(extension);
+        if (image == null) {
+            throw new IllegalArgumentException("File is not a valid JPEG, PNG, or WebP image");
+        }
 
-        if (!validContentType && !validExtension) {
-            throw new IllegalArgumentException("Only JPEG, PNG, and WebP images are allowed");
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        if (width < MIN_DIMENSION_PX || height < MIN_DIMENSION_PX) {
+            throw new IllegalArgumentException("Image is too small (minimum " + MIN_DIMENSION_PX + "x" + MIN_DIMENSION_PX + "px");
+        }
+
+        if (width > MAX_DIMENSION_PX || height > MAX_DIMENSION_PX) {
+            throw new IllegalArgumentException("Image is too large (maximum " + MAX_DIMENSION_PX + "x" + MAX_DIMENSION_PX + "px");
         }
     }
 

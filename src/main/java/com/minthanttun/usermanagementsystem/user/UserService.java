@@ -5,6 +5,7 @@ import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceEx
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
 import com.minthanttun.usermanagementsystem.user.dto.CompleteProfileRequest;
 import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
@@ -29,6 +30,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ProfileImageService profileImageService;
     private final EmailVerificationService emailVerificationService;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
     @Caching(evict = {
@@ -99,6 +101,8 @@ public class UserService {
 
         currentUser.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(currentUser);
+
+        sessionRevocationService.revokeAllSessions(currentUser.getId());
     }
 
     @Transactional

@@ -10,6 +10,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -30,6 +31,9 @@ public class RefreshToken {
 
     @Column(name = "token_hash", nullable = false, length = 255)
     private String tokenHash;
+
+    @Column(name = "family_id")
+    private UUID familyId;
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;

@@ -2,6 +2,7 @@ package com.minthanttun.usermanagementsystem.auth;
 
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
@@ -25,6 +26,7 @@ public class EmailVerificationService {
     private final TokenHasher tokenHasher;
     private final EmailService emailService;
     private final CacheManager cacheManager;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
     public void generateVerificationEmail(User user, String targetEmail) {
@@ -71,6 +73,7 @@ public class EmailVerificationService {
             }
             user.setEmail(user.getPendingEmail());
             user.setPendingEmail(null);
+            sessionRevocationService.revokeAllSessions(user.getId());
         }
 
         user.setEmailVerified(true);

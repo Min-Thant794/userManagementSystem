@@ -75,4 +75,11 @@ public class GlobalExceptionHandler {
         problem.setProperty("action", "resend_verification");
         return problem;
     }
+
+    @ExceptionHandler(RefreshTokenReuseException.class)
+    public ProblemDetail handleRefreshTokenReuse(RefreshTokenReuseException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Session Compromised");
+        return problem;
+    }
 }

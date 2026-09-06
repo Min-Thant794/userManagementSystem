@@ -35,7 +35,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = oAuth2User.getUser();
 
-        var tokens = tokenIssuer.issueTokenPair(user);
+        var tokens = tokenIssuer.issueNewSession(user);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
