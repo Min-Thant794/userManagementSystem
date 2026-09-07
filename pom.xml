@@ -125,6 +125,13 @@
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Session Management -->
+		<dependency>
+			<groupId>com.github.ua-parser</groupId>
+			<artifactId>uap-java</artifactId>
+			<version>1.6.1</version>
+		</dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

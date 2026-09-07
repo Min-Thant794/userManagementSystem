@@ -108,6 +108,13 @@ FILE: ./pom.xml
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
 
+		<!-- image IO plugins-->
+		<dependency>
+			<groupId>com.twelvemonkeys.imageio</groupId>
+			<artifactId>imageio-webp</artifactId>
+			<version>3.12.0</version>
+		</dependency>
+
 		<!-- Dev tooling -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -791,11 +798,19 @@ FILE: ./src/main/resources/db/migration/V6__add_profile_image.sql
 ============================================================
 ALTER TABLE users ADD COLUMN profile_image_url VARCHAR(500);
 ============================================================
+FILE: ./src/main/resources/db/migration/V8__add_refresh_token.sql
+============================================================
+ALTER TABLE refresh_tokens ADD COLUMN family_id UUID NOT NULL DEFAULT gen_random_uuid();
+============================================================
 FILE: ./src/main/resources/db/migration/V3__add_login_lockout.sql
 ============================================================
 ALTER TABLE users
     ADD COLUMN failed_login_attempts INT NOT NULL DEFAULT 0,
     ADD COLUMN locked_until TIMESTAMPTZ;
+============================================================
+FILE: ./src/main/resources/db/migration/V7__add_pending_email.sql
+============================================================
+ALTER TABLE users ADD COLUMN pending_email VARCHAR(255);
 ============================================================
 FILE: ./src/main/resources/db/migration/V2__seed_first_admin.sql
 ============================================================
@@ -1458,6 +1473,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 }
 ============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/SessionRevocationService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class SessionRevocationService {
+
+    private final RefreshTokenRepository refreshTokenRepository;
+
+    @Transactional
+    public void revokeAllSessions(UUID userId) {
+        int revoked = refreshTokenRepository.revokedAllForUser(userId);
+        log.info("Revoked {} active session(s) for user {}", revoked, userId);
+    }
+}
+
+============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/TokenHasher.java
 ============================================================
 package com.minthanttun.usermanagementsystem.security.jwt;
@@ -1496,6 +1538,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -1511,7 +1554,12 @@ public class TokenIssuer {
     public record IssuedTokens(String accessToken, String refreshToken, long refreshTokenExpiryMs) {}
 
     @Transactional
-    public IssuedTokens issueTokenPair(User user) {
+    public IssuedTokens issueNewSession(User user) {
+        return issueTokenPair(user, UUID.randomUUID());
+    }
+
+    @Transactional
+    public IssuedTokens issueTokenPair(User user, UUID familyId) {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
@@ -1520,6 +1568,7 @@ public class TokenIssuer {
                 .tokenHash(tokenHasher.hash(refreshToken))
                 .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
                 .revoked(false)
+                .familyId(familyId)
                 .build();
         refreshTokenRepository.save(tokenEntity);
 
@@ -1629,7 +1678,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = oAuth2User.getUser();
 
-        var tokens = tokenIssuer.issueTokenPair(user);
+        var tokens = tokenIssuer.issueNewSession(user);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
@@ -2084,6 +2133,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "refresh_tokens")
@@ -2104,6 +2154,9 @@ public class RefreshToken {
 
     @Column(name = "token_hash", nullable = false, length = 255)
     private String tokenHash;
+
+    @Column(name = "family_id")
+    private UUID familyId;
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
@@ -2217,17 +2270,32 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/RefreshTokenRepo
 package com.minthanttun.usermanagementsystem.auth;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
-import java.time.OffsetDateTime;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
+
     Optional<RefreshToken> findByTokenHash(String tokenHash);
     void deleteAllByUser_Id(UUID userId);
     long deleteByRevokedTrueOrExpiresAtBefore(OffsetDateTime cutoff);
-}
 
+    @Modifying
+    @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.id = :id AND t.revoked = false")
+    int revokeIfActive(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.familyId = :familyId AND t.revoked = false")
+    int revokeFamily(@Param("familyId") UUID familyId);
+
+    @Modifying
+    @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.user.id = :userId AND t.revoked = false")
+    int revokedAllForUser(@Param("userId") UUID userId);
+}
 ============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificationToken.java
 ============================================================
@@ -2380,10 +2448,7 @@ package com.minthanttun.usermanagementsystem.auth;
 
 import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
-import com.minthanttun.usermanagementsystem.common.exception.AccountSuspendedException;
-import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
-import com.minthanttun.usermanagementsystem.common.exception.EmailNotVerifiedException;
-import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.common.exception.*;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
@@ -2437,7 +2502,7 @@ public class AuthService {
 
         User saved = userRepository.save(user);
 
-        emailVerificationService.generateVerificationEmail(saved);
+        emailVerificationService.generateVerificationEmail(saved, saved.getEmail());
 
         return saved;
     }
@@ -2476,7 +2541,7 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        return tokenIssuer.issueTokenPair(user);
+        return tokenIssuer.issueNewSession(user);
     }
 
     @Transactional
@@ -2486,12 +2551,19 @@ public class AuthService {
         RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid refresh token"));
 
-        if (tokenEntity.isRevoked()) {
-            throw new InvalidCredentialsException("Refresh token has been revoked");
-        }
-
         if (tokenEntity.getExpiresAt().isBefore(OffsetDateTime.now())) {
             throw new InvalidCredentialsException("Refresh token has expired");
+        }
+
+        //atomic compare-and-swap: only one concurrent request can win this/
+        int rowsUpdated = refreshTokenRepository.revokeIfActive(tokenEntity.getId());
+
+        if (rowsUpdated == 0) {
+            //someone already consumed this exact token. Either a genuine race
+            // (rare) or a stolen token being replayed - treat both as compromise
+            // and kill the whole lineage, forcing a fresh login.
+            refreshTokenRepository.revokeFamily(tokenEntity.getFamilyId());
+            throw new RefreshTokenReuseException("This session has been comprimised or reused. Please log in again");
         }
 
         User user = tokenEntity.getUser();
@@ -2499,11 +2571,7 @@ public class AuthService {
             throw new AccountSuspendedException("This account has been suspended");
         }
 
-        // Rotate: revoke the old refresh token, issue a brand new pair.
-        tokenEntity.setRevoked(true);
-        refreshTokenRepository.save(tokenEntity);
-
-        return tokenIssuer.issueTokenPair(user);
+        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId());
     }
 
     @Transactional
@@ -2556,7 +2624,9 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificatio
 ============================================================
 package com.minthanttun.usermanagementsystem.auth;
 
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
@@ -2580,9 +2650,10 @@ public class EmailVerificationService {
     private final TokenHasher tokenHasher;
     private final EmailService emailService;
     private final CacheManager cacheManager;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
-    public void generateVerificationEmail(User user) {
+    public void generateVerificationEmail(User user, String targetEmail) {
         // Invalidate any previously issued, still-unused tokens for this user.
         emailVerificationTokenRepository.findAllByUser_IdAndUsedFalse(user.getId())
                 .forEach(token -> token.setUsed(true));
@@ -2597,7 +2668,7 @@ public class EmailVerificationService {
                 .build();
         emailVerificationTokenRepository.save(token);
 
-        emailService.sendVerificationEmail(user.getEmail(), rawToken);
+        emailService.sendVerificationEmail(targetEmail, rawToken);
     }
 
     @Transactional
@@ -2618,6 +2689,17 @@ public class EmailVerificationService {
         User user = userRepository.findById(token.getUser().getId())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid or expired verification link"));
 
+        if (user.getPendingEmail() != null) {
+            //re-check uniqueness at verify-time too - someone else could have claimed this email between the change
+            // request and now.
+            if (userRepository.existsByEmail(user.getPendingEmail())) {
+                throw new DuplicateResourceException("This email is no longer available");
+            }
+            user.setEmail(user.getPendingEmail());
+            user.setPendingEmail(null);
+            sessionRevocationService.revokeAllSessions(user.getId());
+        }
+
         user.setEmailVerified(true);
         userRepository.save(user);
 
@@ -2632,7 +2714,8 @@ public class EmailVerificationService {
     public void resendVerification(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
             if (!user.isEmailVerified()) {
-                generateVerificationEmail(user);
+                String targetEmail = user.getPendingEmail() != null ? user.getPendingEmail() : user.getEmail();
+                generateVerificationEmail(user, targetEmail);
             }
             // Already verified — silently do nothing, same non-enumeration
             // reasoning as forgotPassword().
@@ -2745,6 +2828,7 @@ package com.minthanttun.usermanagementsystem.auth;
 import com.minthanttun.usermanagementsystem.auth.dto.ForgotPasswordRequest;
 import com.minthanttun.usermanagementsystem.auth.dto.ResetPasswordRequest;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
@@ -2768,6 +2852,7 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
     private final TokenHasher tokenHasher;
     private final EmailService emailService;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
@@ -2813,6 +2898,8 @@ public class PasswordResetService {
 
         resetToken.setUsed(true);
         passwordResetTokenRepository.save(resetToken);
+
+        sessionRevocationService.revokeAllSessions(user.getId());
     }
 
     private String generateRawToken() {
@@ -2981,6 +3068,9 @@ public record AdminUserResponse (
         String phoneNumber,
         Role role,
         AccountStatus status,
+        boolean emailVerified,
+        int failedLoginAttempts,
+        OffsetDateTime lockedUntil,
         boolean profileComplete,
         String profileImageUrl,
         OffsetDateTime createdAt,
@@ -2994,6 +3084,9 @@ public record AdminUserResponse (
           user.getPhoneNumber(),
           user.getRole(),
           user.getStatus(),
+          user.isEmailVerified(),
+          user.getFailedLoginAttempts(),
+          user.getLockedUntil(),
           user.isProfileComplete(),
           user.getProfileImageUrl(),
           user.getCreatedAt(),
@@ -3122,6 +3215,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Objects;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Service
@@ -3189,9 +3284,9 @@ public class AdminUserService {
 
         User saved = userRepository.save(user);
 
-        boolean actuallyChanged = !beforeUsername.equals(saved.getUsername())
-                || !beforeEmail.equals(saved.getEmail())
-                || !java.util.Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
+        boolean actuallyChanged = !Objects.equals(beforeUsername, saved.getUsername())
+                || !Objects.equals(beforeEmail, saved.getEmail())
+                || !Objects.equals(beforePhoneNumber, saved.getPhoneNumber());
 
         if (actuallyChanged) {
             auditService.log(
@@ -3199,15 +3294,15 @@ public class AdminUserService {
                     saved.getId(),
                     AuditAction.UPDATE,
                     Map.of(
-                            "before", Map.of(
+                            "before", nullSafeMap(
                                     "username", beforeUsername,
                                     "email", beforeEmail,
-                                    "phoneNumber", beforePhoneNumber == null ? "" : beforePhoneNumber
+                                    "phoneNumber", beforePhoneNumber
                             ),
-                            "after", Map.of(
+                            "after", nullSafeMap(
                                     "username", saved.getUsername(),
                                     "email", saved.getEmail(),
-                                    "phoneNumber", saved.getPhoneNumber() == null ? "" : saved.getPhoneNumber()
+                                    "phoneNumber", saved.getPhoneNumber()
                             )
                     )
             );
@@ -3316,6 +3411,14 @@ public class AdminUserService {
         );
 
         return saved;
+    }
+
+    private Map<String, Object> nullSafeMap(String k1, String v1, String k2, String v2, String k3, String v3) {
+        Map<String, Object> map = new HashMap<>();
+        map.put(k1, v1 == null ? "" : v1);
+        map.put(k2, v2 == null ? "" : v2);
+        map.put(k3, v3 == null ? "" : v3);
+        return map;
     }
 }
 
@@ -3511,13 +3614,14 @@ public record UserResponse(
         UUID id,
         String username,
         String email,
+        String pendingEmail,
         String phoneNumber,
         Role role,
         String profileImageUrl
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
-                user.getId(), user.getUsername(), user.getEmail(),
+                user.getId(), user.getUsername(), user.getEmail(), user.getPendingEmail(),
                 user.getPhoneNumber(), user.getRole(), user.getProfileImageUrl()
         );
     }
@@ -3585,8 +3689,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -3595,18 +3701,21 @@ import java.util.UUID;
 public class ProfileImageService {
 
     private static final long MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-    private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/webp");
-    private static final List<String> ALLOWED_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
+    private static final int MIN_DIMENSION_PX = 50;
+    private static final int MAX_DIMENSION_PX = 4000;
 
     private final Cloudinary cloudinary;
 
     public String uploadImage(MultipartFile file, UUID userId) {
-        validate(file);
-
         try {
+            byte[] bytes = file.getBytes();
+            validateAndDecode(file, bytes);
+
             Map<String, Object> uploadOptions = ObjectUtils.asMap(
                     "public_id", avatarPublicId(userId),
                     "overwrite", true,
+                    "format", "jpg",
+                    "quality", "auto:good",
                     "transformation", new Transformation()
                             .width(300)
                             .height(300)
@@ -3614,9 +3723,7 @@ public class ProfileImageService {
                             .gravity("face")
             );
 
-            Map uploadResult = cloudinary.uploader()
-                    .upload(file.getBytes(), uploadOptions);
-
+            Map uploadResult = cloudinary.uploader().upload(bytes, uploadOptions);
             return (String) uploadResult.get("secure_url");
 
         } catch (IOException e) {
@@ -3632,7 +3739,7 @@ public class ProfileImageService {
         }
     }
 
-    private void validate(MultipartFile file) {
+    private void validateAndDecode(MultipartFile file, byte[] bytes) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
@@ -3641,17 +3748,24 @@ public class ProfileImageService {
             throw new IllegalArgumentException("File exceeds maximum size of 5MB");
         }
 
-        String contentType = file.getContentType();
-        boolean validContentType = contentType != null && ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase());
+        BufferedImage image;
+        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
+            image = ImageIO.read(stream);
+        }
 
-        String filename = file.getOriginalFilename();
-        String extension = filename != null && filename.contains(".")
-                ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase()
-                : "";
-        boolean validExtension = ALLOWED_EXTENSIONS.contains(extension);
+        if (image == null) {
+            throw new IllegalArgumentException("File is not a valid JPEG, PNG, or WebP image");
+        }
 
-        if (!validContentType && !validExtension) {
-            throw new IllegalArgumentException("Only JPEG, PNG, and WebP images are allowed");
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        if (width < MIN_DIMENSION_PX || height < MIN_DIMENSION_PX) {
+            throw new IllegalArgumentException("Image is too small (minimum " + MIN_DIMENSION_PX + "x" + MIN_DIMENSION_PX + "px");
+        }
+
+        if (width > MAX_DIMENSION_PX || height > MAX_DIMENSION_PX) {
+            throw new IllegalArgumentException("Image is too large (maximum " + MAX_DIMENSION_PX + "x" + MAX_DIMENSION_PX + "px");
         }
     }
 
@@ -3664,10 +3778,12 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/UserService.java
 ============================================================
 package com.minthanttun.usermanagementsystem.user;
 
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationService;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
 import com.minthanttun.usermanagementsystem.user.dto.ChangePasswordRequest;
 import com.minthanttun.usermanagementsystem.user.dto.CompleteProfileRequest;
 import com.minthanttun.usermanagementsystem.user.dto.SetInitialPasswordRequest;
@@ -3691,36 +3807,39 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProfileImageService profileImageService;
+    private final EmailVerificationService emailVerificationService;
+    private final SessionRevocationService sessionRevocationService;
 
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "users", key = "#currentUser.id"),
             @CacheEvict(value = "adminUsers", key = "#currentUser.id")
     })
-    public User updateProfile(User currentUser, UpdateProfileRequest request) {
+    public User updateProfile(User user, UpdateProfileRequest request) {
 
-        if (request.username() != null && !request.username().equals(currentUser.getUsername())) {
+        if (request.username() != null && !request.username().equals(user.getUsername())) {
             if (userRepository.existsByUsername(request.username())) {
                 throw new DuplicateResourceException("Username is already taken");
             }
-            currentUser.setUsername(request.username());
+            user.setUsername(request.username());
         }
 
-        if (request.email() != null && !request.email().equals(currentUser.getEmail())) {
-            if (userRepository.existsByEmail(request.email())) {
+        if (request.email() != null && !request.email().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.email()) || userRepository.existsByPendingEmail(request.email())) {
                 throw new DuplicateResourceException("Email is already registered");
             }
-            currentUser.setEmail(request.email());
+            user.setPendingEmail(request.email());
+            emailVerificationService.generateVerificationEmail(user, request.email());
         }
 
-        if (request.phoneNumber() != null && !request.phoneNumber().equals(currentUser.getPhoneNumber())) {
+        if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
             if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
                 throw new DuplicateResourceException("Phone number is already registered");
             }
-            currentUser.setPhoneNumber(request.phoneNumber());
+            user.setPhoneNumber(request.phoneNumber());
         }
 
-        return userRepository.save(currentUser);
+        return userRepository.save(user);
     }
 
     @Transactional
@@ -3736,7 +3855,7 @@ public class UserService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "users", key = "user.id"),
+            @CacheEvict(value = "users", key = "#user.id"),
             @CacheEvict(value = "adminUsers", key = "#user.id")
     })
     public User deleteProfilePhoto(User user) {
@@ -3760,6 +3879,8 @@ public class UserService {
 
         currentUser.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(currentUser);
+
+        sessionRevocationService.revokeAllSessions(currentUser.getId());
     }
 
     @Transactional
@@ -3851,6 +3972,9 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
+    @Column(name = "pending_email", length = 255)
+    private String pendingEmail;
+
     @Column(name = "email_verified", nullable = false)
     @Builder.Default
     private boolean emailVerified = false;
@@ -3911,6 +4035,7 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor {
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
+    boolean existsByPendingEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByPhoneNumber(String phoneNumber);
@@ -4070,6 +4195,17 @@ public class DuplicateResourceException extends RuntimeException {
 }
 
 ============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/RefreshTokenReuseException.java
+============================================================
+package com.minthanttun.usermanagementsystem.common.exception;
+
+public class RefreshTokenReuseException extends RuntimeException {
+    public RefreshTokenReuseException(String message) {
+        super (message);
+    }
+}
+
+============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/common/exception/InvalidCredentialsException.java
 ============================================================
 package com.minthanttun.usermanagementsystem.common.exception;
@@ -4169,6 +4305,13 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problem.setTitle("Email Not Verified");
         problem.setProperty("action", "resend_verification");
+        return problem;
+    }
+
+    @ExceptionHandler(RefreshTokenReuseException.class)
+    public ProblemDetail handleRefreshTokenReuse(RefreshTokenReuseException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Session Compromised");
         return problem;
     }
 }

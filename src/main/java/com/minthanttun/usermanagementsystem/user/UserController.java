@@ -3,6 +3,8 @@ package com.minthanttun.usermanagementsystem.user;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.security.session.GeoLocationService;
+import com.minthanttun.usermanagementsystem.security.session.UserAgentParsingService;
 import com.minthanttun.usermanagementsystem.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,19 @@ public class UserController {
 
     private final UserService userService;
     private final ProfileImageService profileImageService;
+
+    private final GeoLocationService geoLocationService;
+    private final UserAgentParsingService userAgentParsingService;
+
+    @GetMapping("/geo")
+    public String testGeo(@RequestParam String ip) {
+        return geoLocationService.describeLocation(ip);
+    }
+
+    @GetMapping("/ua")
+    public String testUa(@RequestParam String userAgent) {
+        return userAgentParsingService.describeDevice(userAgent);
+    }
 
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
