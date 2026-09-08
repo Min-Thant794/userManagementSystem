@@ -35,6 +35,15 @@ public class RefreshToken {
     @Column(name = "family_id")
     private UUID familyId;
 
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(name = "last_used_at", nullable = false)
+    private OffsetDateTime lastUsedAt;
+
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 

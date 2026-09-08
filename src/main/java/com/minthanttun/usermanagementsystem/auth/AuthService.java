@@ -9,6 +9,7 @@ import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -62,7 +63,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenIssuer.IssuedTokens login(LoginRequest request) {
+    public TokenIssuer.IssuedTokens login(LoginRequest request, HttpServletRequest httpRequest) {
         Optional<User> maybeUser = userRepository.findByUsername(request.identifier())
                 .or(() -> userRepository.findByEmail(request.identifier()));
 
@@ -95,11 +96,11 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        return tokenIssuer.issueNewSession(user);
+        return tokenIssuer.issueNewSession(user, httpRequest);
     }
 
     @Transactional
-    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken) {
+    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken, HttpServletRequest httpRequest) {
         String hash = tokenHasher.hash(rawRefreshToken);
 
         RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
@@ -117,7 +118,7 @@ public class AuthService {
             // (rare) or a stolen token being replayed - treat both as compromise
             // and kill the whole lineage, forcing a fresh login.
             refreshTokenRepository.revokeFamily(tokenEntity.getFamilyId());
-            throw new RefreshTokenReuseException("This session has been comprimised or reused. Please log in again");
+            throw new RefreshTokenReuseException("This session has been compromised or reused. Please log in again");
         }
 
         User user = tokenEntity.getUser();
@@ -125,7 +126,7 @@ public class AuthService {
             throw new AccountSuspendedException("This account has been suspended");
         }
 
-        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId());
+        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId(), httpRequest);
     }
 
     @Transactional
