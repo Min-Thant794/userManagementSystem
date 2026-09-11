@@ -6,6 +6,7 @@ import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
 import com.minthanttun.usermanagementsystem.admin.dto.UserSearchCriteria;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
 import com.minthanttun.usermanagementsystem.audit.AuditService;
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationService;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.LastAdminException;
 import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
@@ -36,6 +37,7 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public Page<User> listUsers(UserSearchCriteria criteria, Pageable pageable) {
         Specification<User> spec = Specification.allOf(
@@ -82,7 +84,8 @@ public class AdminUserService {
             if (userRepository.existsByEmail(request.email())) {
                 throw new DuplicateResourceException("Email is already registered");
             }
-            user.setEmail(request.email());
+            user.setPendingEmail(request.email());
+            emailVerificationService.generateVerificationEmail(user, request.email());
         }
 
         if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
@@ -209,6 +212,7 @@ public class AdminUserService {
                 .phoneNumber(request.phoneNumber())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(Role.ADMIN)
+                .emailVerified(true)
                 .build();
 
         User saved = userRepository.save(newAdmin);

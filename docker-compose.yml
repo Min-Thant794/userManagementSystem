@@ -1,0 +1,28 @@
+services:
+
+  postgres:
+    image: postgres:18.3
+    container_name: usermanagementsystem-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  redis:
+    image: redis:7-alpine
+    container_name: usermanagementsystem-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${DOCKER_REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
