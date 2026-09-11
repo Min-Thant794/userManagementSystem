@@ -1,5 +1,6 @@
 package com.minthanttun.usermanagementsystem.config;
 
+import com.minthanttun.usermanagementsystem.security.jwt.JwtAccessDeniedHandler;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthFilter;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthenticationEntryPoint;
 import com.minthanttun.usermanagementsystem.security.oauth2.CustomOidcUserService;
@@ -33,6 +34,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final RateLimitFilter rateLimitFilter;
@@ -69,7 +71,10 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/swagger-ui/**",

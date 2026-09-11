@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -127,7 +126,7 @@ public class UserController {
             )
     })
     @SecurityRequirement(name = "bearerAuth")
-    // Users who signed up through OAuth may not have a local password.
+    // signup with oauth, dont have local password
     @PutMapping("/me/password/initial")
     public ResponseEntity<Void> setInitialPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,

@@ -5,6 +5,7 @@ import com.minthanttun.usermanagementsystem.admin.dto.AuditLogResponse;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
 import com.minthanttun.usermanagementsystem.audit.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,7 +31,7 @@ public class AdminAuditLogController {
             @RequestParam(required = false) UUID actorUserId,
             @RequestParam(required = false) UUID targetUserId,
             @RequestParam(required = false) AuditAction action,
-            Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         Specification<com.minthanttun.usermanagementsystem.audit.AuditLog> spec = Specification.allOf(
                 AuditLogSpecifications.hasActor(actorUserId),

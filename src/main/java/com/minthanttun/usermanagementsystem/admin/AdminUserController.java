@@ -13,13 +13,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -27,6 +27,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
@@ -49,14 +50,13 @@ public class AdminUserController {
                     description = "Administrator privileges are required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Page<AdminUserResponse> listUsers(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Role role,
             @RequestParam(required = false) AccountStatus status,
-            Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         UserSearchCriteria criteria = new UserSearchCriteria(search, role, status);
         return adminUserService.listUsers(criteria, pageable).map(AdminUserResponse::from);
@@ -88,7 +88,6 @@ public class AdminUserController {
                     description = "User not found"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse getUsers(@PathVariable UUID id) {
@@ -117,7 +116,6 @@ public class AdminUserController {
                     description = "User not found"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateUser(
@@ -159,7 +157,6 @@ public class AdminUserController {
                     description = "User not found"
             ),
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateStatus(
@@ -201,7 +198,6 @@ public class AdminUserController {
                     description = "User not found"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateRole(
@@ -243,7 +239,6 @@ public class AdminUserController {
                     description = "Username or email already exists"
             ),
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminUserResponse> createAdmin(
