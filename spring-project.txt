@@ -128,6 +128,13 @@ FILE: ./pom.xml
 			<optional>true</optional>
 		</dependency>
 
+		<!-- Session Management -->
+		<dependency>
+			<groupId>com.github.ua-parser</groupId>
+			<artifactId>uap-java</artifactId>
+			<version>1.6.1</version>
+		</dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -739,6 +746,13 @@ class UsermanagementsystemApplicationTests {
 }
 
 ============================================================
+FILE: ./src/main/resources/db/migration/V9__add_session_metadata.sql
+============================================================
+ALTER TABLE refresh_tokens
+    ADD COLUMN ip_address VARCHAR(45),
+    ADD COLUMN user_agent VARCHAR(500),
+    ADD COLUMN last_used_at TIMESTAMPTZ NOT NULL DEFAULT now();
+============================================================
 FILE: ./src/main/resources/db/migration/V1__init.sql
 ============================================================
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -1030,7 +1044,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh",
+                                "/api/auth/logout", "/api/auth/forgot-password", "/api/auth/reset-password",
+                                "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -1532,6 +1548,7 @@ package com.minthanttun.usermanagementsystem.security.jwt;
 import com.minthanttun.usermanagementsystem.auth.RefreshToken;
 import com.minthanttun.usermanagementsystem.auth.RefreshTokenRepository;
 import com.minthanttun.usermanagementsystem.user.User;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -1554,14 +1571,15 @@ public class TokenIssuer {
     public record IssuedTokens(String accessToken, String refreshToken, long refreshTokenExpiryMs) {}
 
     @Transactional
-    public IssuedTokens issueNewSession(User user) {
-        return issueTokenPair(user, UUID.randomUUID());
+    public IssuedTokens issueNewSession(User user, HttpServletRequest request) {
+        return issueTokenPair(user, UUID.randomUUID(), request);
     }
 
     @Transactional
-    public IssuedTokens issueTokenPair(User user, UUID familyId) {
+    public IssuedTokens issueTokenPair(User user, UUID familyId, HttpServletRequest request) {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
+        OffsetDateTime now = OffsetDateTime.now();
 
         RefreshToken tokenEntity = RefreshToken.builder()
                 .user(user)
@@ -1569,10 +1587,24 @@ public class TokenIssuer {
                 .expiresAt(OffsetDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
                 .revoked(false)
                 .familyId(familyId)
+                .ipAddress(extractClientIp(request))
+                .userAgent(request.getHeader("User-Agent"))
+                .lastUsedAt(now)
                 .build();
         refreshTokenRepository.save(tokenEntity);
 
         return new IssuedTokens(accessToken, refreshToken, refreshTokenExpiryMs);
+    }
+
+    private String extractClientIp(HttpServletRequest request) {
+        String forwardFor = request.getHeader("X-Forwarded-For");
+        if (forwardFor != null && !forwardFor.isBlank()) {
+            //X-Forwarded-For can be a comma-separated chain when multiple
+            //proxies are involved - the first entry is the original client.
+            return forwardFor.split(",")[0].trim();
+        }
+
+        return request.getRemoteAddr();
     }
 }
 
@@ -1678,7 +1710,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         User user = oAuth2User.getUser();
 
-        var tokens = tokenIssuer.issueNewSession(user);
+        var tokens = tokenIssuer.issueNewSession(user, request);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
@@ -1981,6 +2013,105 @@ public class CustomUserDetailsService implements UserDetailsService {
 }
 
 ============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/session/GeoLocationService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.session;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
+
+@Service
+@Slf4j
+public class GeoLocationService {
+
+    private final RestClient restClient = RestClient.builder()
+            .baseUrl("http://ip-api.com")
+            .build();
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public String describeLocation(String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank() || isLocalOrPrivate(ipAddress)) {
+            return "Local network";
+        }
+
+        try {
+            String response = restClient.get()
+                    .uri("/json/{ip}?fields=status,country,city", ipAddress)
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode node = objectMapper.readTree(response);
+
+            if ("success".equals(node.path("status").asText())) {
+                String city = node.path("city").asText("");
+                String country = node.path("country").asText("");
+                return city.isBlank() ? country : city + ", " + country;
+            }
+        } catch (Exception e) {
+            log.warn("Geolocation lookup failed for IP {}: {}", ipAddress);
+        }
+
+        return ipAddress;
+    }
+
+    private boolean isLocalOrPrivate(String ip) {
+        return ip.equals("127.0.0.1") || ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1")
+                || ip.startsWith("192.168.") || ip.startsWith("10.");
+    }
+}
+
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/session/UserAgentParsingService.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.session;
+
+import org.springframework.stereotype.Service;
+import ua_parser.Client;
+import ua_parser.Parser;
+
+@Service
+public class UserAgentParsingService {
+
+    private final Parser uaParser = new Parser();
+
+    public String describeDevice(String rawUserAgent) {
+        if (rawUserAgent == null || rawUserAgent.isBlank()) {
+            return "Unknown device";
+        }
+
+        Client client = uaParser.parse(rawUserAgent);
+
+        String browser = client.userAgent.family;
+        String os = client.os.family;
+
+        if (isUnknown(browser) && isUnknown(os)) {
+            return "Unknown device";
+        }
+
+        if (isUnknown(os)) {
+            return browser;
+        }
+
+        if (isUnknown(browser)) {
+            return os;
+        }
+
+        return browser + " on " + os;
+    }
+
+    private boolean isUnknown(String value) {
+        return value == null || value.equalsIgnoreCase("Other");
+    }
+}
+
+============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/SignupRequest.java
 ============================================================
 package com.minthanttun.usermanagementsystem.auth.dto;
@@ -2119,6 +2250,23 @@ public record ResetPasswordRequest (
 }
 
 ============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/SessionResponse.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth.dto;
+
+import java.time.OffsetDateTime;
+
+public record SessionResponse (
+        Long id,
+        String device,
+        String location,
+        OffsetDateTime lastUsedAt,
+        OffsetDateTime createdAt,
+        boolean current
+) {
+}
+
+============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/RefreshToken.java
 ============================================================
 package com.minthanttun.usermanagementsystem.auth;
@@ -2157,6 +2305,15 @@ public class RefreshToken {
 
     @Column(name = "family_id")
     private UUID familyId;
+
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(name = "last_used_at", nullable = false)
+    private OffsetDateTime lastUsedAt;
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
@@ -2218,6 +2375,78 @@ public class PasswordResetToken {
     private OffsetDateTime createdAt;
 }
 ============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/SessionService.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.auth.dto.SessionResponse;
+import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.security.session.GeoLocationService;
+import com.minthanttun.usermanagementsystem.security.session.UserAgentParsingService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class SessionService {
+
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final UserAgentParsingService userAgentParsingService;
+    private final GeoLocationService geoLocationService;
+    private final TokenHasher tokenHasher;
+
+    @Transactional
+    public void revokeSession(Long sessionId, UUID userId) {
+        RefreshToken token = refreshTokenRepository.findByIdAndUser_Id(sessionId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found"));
+
+        refreshTokenRepository.revokeIfActive(token.getId());
+    }
+
+    @Transactional
+    public int revokeAllOtherSessions(UUID userId, String currentRawRefreshToken) {
+        if (currentRawRefreshToken == null) {
+            //No current session to protect - just revoke everything.
+            return refreshTokenRepository.revokedAllForUser(userId);
+        }
+
+        String currentHash = tokenHasher.hash(currentRawRefreshToken);
+        RefreshToken currentToken = refreshTokenRepository.findByTokenHash(currentHash)
+                .orElseThrow(() -> new ResourceNotFoundException("Current session not found"));
+
+        return refreshTokenRepository.revokeAllExcept(userId, currentToken.getId());
+    }
+
+    public List<SessionResponse> listSessions(UUID userId, String currentRawRefreshToken) {
+        String currentHash = currentRawRefreshToken != null ? tokenHasher.hash(currentRawRefreshToken) : null;
+
+        List<RefreshToken> activeSessions = refreshTokenRepository
+                .findAllByUser_IdAndRevokedFalseAndExpiresAtAfter(userId, OffsetDateTime.now());
+
+        return activeSessions.stream()
+                .map(token -> toResponse(token, currentHash))
+                .toList();
+    }
+
+    private SessionResponse toResponse(RefreshToken token, String currentHash) {
+        return new SessionResponse(
+                token.getId(),
+                userAgentParsingService.describeDevice(token.getUserAgent()),
+                geoLocationService.describeLocation(token.getIpAddress()),
+                token.getLastUsedAt(),
+                token.getCreatedAt(),
+                token.getTokenHash().equals(currentHash)
+        );
+    }
+}
+
+============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/OAuthAccount.java
 ============================================================
 package com.minthanttun.usermanagementsystem.auth;
@@ -2275,6 +2504,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -2283,6 +2513,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     Optional<RefreshToken> findByTokenHash(String tokenHash);
     void deleteAllByUser_Id(UUID userId);
     long deleteByRevokedTrueOrExpiresAtBefore(OffsetDateTime cutoff);
+
+    List<RefreshToken> findAllByUser_IdAndRevokedFalseAndExpiresAtAfter(UUID userId, OffsetDateTime now);
+    Optional<RefreshToken> findByIdAndUser_Id(Long id, UUID userId);
 
     @Modifying
     @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.id = :id AND t.revoked = false")
@@ -2295,6 +2528,10 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Modifying
     @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.user.id = :userId AND t.revoked = false")
     int revokedAllForUser(@Param("userId") UUID userId);
+
+    @Modifying
+    @Query("UPDATE RefreshToken t SET t.revoked = true WHERE t.user.id = :userId AND t.id != :excludeId AND t.revoked = false")
+    int revokeAllExcept(@Param("userId") UUID userId, @Param("excludeId") Long excludeId);
 }
 ============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/EmailVerificationToken.java
@@ -2362,15 +2599,20 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/AuthController.j
 package com.minthanttun.usermanagementsystem.auth;
 
 import com.minthanttun.usermanagementsystem.auth.dto.*;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.dto.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -2381,6 +2623,7 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final CookieUtil cookieUtil;
     private final EmailVerificationService emailVerificationService;
+    private final SessionService sessionService;
 
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
@@ -2401,8 +2644,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        var tokens = authService.login(request);
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) {
+        var tokens = authService.login(request, httpRequest);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
         return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
@@ -2410,9 +2656,10 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(
             @CookieValue(name = "refreshToken") String refreshToken,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
-        var tokens = authService.refresh(refreshToken);
+        var tokens = authService.refresh(refreshToken, httpRequest);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
         return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
@@ -2440,6 +2687,33 @@ public class AuthController {
         passwordResetService.resetPassword(request);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/sessions")
+    public List<SessionResponse> listSessions(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        return sessionService.listSessions(userDetails.getUser().getId(), refreshToken);
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> revokeSession(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long sessionId
+    ) {
+        sessionService.revokeSession(sessionId, userDetails.getUser().getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/sessions/others")
+    public ResponseEntity<Void> revokeOtherSessions(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @CookieValue(name = "refreshToken", required = false)
+            String refreshToken
+    ) {
+        sessionService.revokeAllOtherSessions(userDetails.getUser().getId(), refreshToken);
+        return ResponseEntity.noContent().build();
+    }
 }
 ============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/AuthService.java
@@ -2455,6 +2729,7 @@ import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -2508,7 +2783,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenIssuer.IssuedTokens login(LoginRequest request) {
+    public TokenIssuer.IssuedTokens login(LoginRequest request, HttpServletRequest httpRequest) {
         Optional<User> maybeUser = userRepository.findByUsername(request.identifier())
                 .or(() -> userRepository.findByEmail(request.identifier()));
 
@@ -2541,11 +2816,11 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        return tokenIssuer.issueNewSession(user);
+        return tokenIssuer.issueNewSession(user, httpRequest);
     }
 
     @Transactional
-    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken) {
+    public TokenIssuer.IssuedTokens refresh(String rawRefreshToken, HttpServletRequest httpRequest) {
         String hash = tokenHasher.hash(rawRefreshToken);
 
         RefreshToken tokenEntity = refreshTokenRepository.findByTokenHash(hash)
@@ -2563,7 +2838,7 @@ public class AuthService {
             // (rare) or a stolen token being replayed - treat both as compromise
             // and kill the whole lineage, forcing a fresh login.
             refreshTokenRepository.revokeFamily(tokenEntity.getFamilyId());
-            throw new RefreshTokenReuseException("This session has been comprimised or reused. Please log in again");
+            throw new RefreshTokenReuseException("This session has been compromised or reused. Please log in again");
         }
 
         User user = tokenEntity.getUser();
@@ -2571,7 +2846,7 @@ public class AuthService {
             throw new AccountSuspendedException("This account has been suspended");
         }
 
-        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId());
+        return tokenIssuer.issueTokenPair(user, tokenEntity.getFamilyId(), httpRequest);
     }
 
     @Transactional
@@ -4059,6 +4334,8 @@ package com.minthanttun.usermanagementsystem.user;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.security.session.GeoLocationService;
+import com.minthanttun.usermanagementsystem.security.session.UserAgentParsingService;
 import com.minthanttun.usermanagementsystem.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -4074,6 +4351,19 @@ public class UserController {
 
     private final UserService userService;
     private final ProfileImageService profileImageService;
+
+    private final GeoLocationService geoLocationService;
+    private final UserAgentParsingService userAgentParsingService;
+
+    @GetMapping("/geo")
+    public String testGeo(@RequestParam String ip) {
+        return geoLocationService.describeLocation(ip);
+    }
+
+    @GetMapping("/ua")
+    public String testUa(@RequestParam String userAgent) {
+        return userAgentParsingService.describeDevice(userAgent);
+    }
 
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
