@@ -1,7 +1,7 @@
 package com.minthanttun.usermanagementsystem.auth;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -232,7 +231,8 @@ public class AuthController {
 
     @Operation(
             summary = "List active sessions",
-            description = "Returns the active sessions belonging to the currently authenticated user."
+            description = "Returns the active sessions belonging to the currently authenticated user." +
+                    "The current session is identified using the refreshToken cookie when available."
     )
     @ApiResponses({
             @ApiResponse(
@@ -240,8 +240,8 @@ public class AuthController {
                     description = "Sessions retrieved successfully",
                     content = @Content(
                             mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = SessionResponse.class
+                            array = @ArraySchema(
+                                    schema = @Schema(implementation = SessionResponse.class)
                             )
                     )
             ),

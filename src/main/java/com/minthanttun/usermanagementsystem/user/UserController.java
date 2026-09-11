@@ -18,10 +18,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
-    private final ProfileImageService profileImageService;
 
     @Operation(
             summary = "Get current user",
@@ -41,7 +41,6 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return userService.getCachedProfile(userDetails.getUser().getId());
@@ -69,7 +68,6 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/me")
     public UserResponse updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -97,7 +95,6 @@ public class UserController {
                     description = "Authentication is required or the current password is incorrect"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -125,8 +122,7 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
-    // signup with oauth, dont have local password
+    // signup with oauth, don't have local password
     @PutMapping("/me/password/initial")
     public ResponseEntity<Void> setInitialPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -158,7 +154,6 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/me/photo")
     public UserResponse uploadProfilePhoto(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -186,7 +181,6 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/me/photo")
     public UserResponse deleteProfilePhoto(@AuthenticationPrincipal CustomUserDetails userDetails) {
         User updated = userService.deleteProfilePhoto(userDetails.getUser());
@@ -215,7 +209,6 @@ public class UserController {
                     description = "Authentication is required"
             )
     })
-    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/me/complete-profile")
     public UserResponse completeProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,

@@ -6,6 +6,7 @@ import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.Role;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -53,8 +54,19 @@ public class AdminUserController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Page<AdminUserResponse> listUsers(
+            @Parameter(
+                    description = "Search text used to filter users."
+            )
             @RequestParam(required = false) String search,
+
+            @Parameter(
+                    description = "Filter users by role."
+            )
             @RequestParam(required = false) Role role,
+
+            @Parameter(
+                    description = "Filter users by account status."
+            )
             @RequestParam(required = false) AccountStatus status,
             @ParameterObject Pageable pageable
     ) {
@@ -90,7 +102,14 @@ public class AdminUserController {
     })
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public AdminUserResponse getUsers(@PathVariable UUID id) {
+    public AdminUserResponse getUsers(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
+            @PathVariable UUID id
+    ) {
         return adminUserService.getCachedUserResponse(id);
     }
 
@@ -99,6 +118,14 @@ public class AdminUserController {
             description = "Updates an existing user's account information. This endpoint is restricted to administrators."
     )
     @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User successfully updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
             @ApiResponse(
                     responseCode = "400",
                     description = "Invalid request"
@@ -119,6 +146,11 @@ public class AdminUserController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateUser(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody AdminUpdateUserRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
@@ -160,6 +192,11 @@ public class AdminUserController {
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateStatus(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
@@ -201,6 +238,11 @@ public class AdminUserController {
     @PatchMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateRole(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody ChangeRoleRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
