@@ -34,8 +34,8 @@ public class UserService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "users", key = "#currentUser.id"),
-            @CacheEvict(value = "adminUsers", key = "#currentUser.id")
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
     })
     public User updateProfile(User user, UpdateProfileRequest request) {
 
