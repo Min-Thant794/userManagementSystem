@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
+class AuthServiceTest {
 
     @Mock
     private LoginAttemptService loginAttemptService;
@@ -721,5 +721,134 @@ public class AuthServiceTest {
                         any(UUID.class),
                         any(HttpServletRequest.class)
                 );
+    }
+
+    @Test
+    void refresh_shouldRejectSuspendedAccount() {
+        //Arrange
+        String rawRefreshToken = "refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        Long tokenId = 1L;
+        UUID familyId = UUID.randomUUID();
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .status(AccountStatus.SUSPENDED)
+                .build();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .familyId(familyId)
+                .user(user)
+                .expiresAt(OffsetDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        when(refreshTokenRepository.revokeIfActive(tokenId)).thenReturn(1);
+
+        //Act & Assert
+        assertThatThrownBy(() ->
+                authService.refresh(rawRefreshToken, httpRequest)
+        )
+                .isInstanceOf(AccountSuspendedException.class)
+                .hasMessage("This account has been suspended");
+
+        //Token was consumed, but no new token pair should be issued
+        verify(refreshTokenRepository).revokeIfActive(tokenId);
+
+        verify(tokenIssuer, never()).issueTokenPair(
+                any(User.class),
+                any(UUID.class),
+                any(HttpServletRequest.class)
+        );
+
+    }
+
+    @Test
+    void logout_shouldRevokeExistingRefreshToken() {
+        //Arrange
+        String rawRefreshToken = "refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        Long tokenId = 1L;
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .revoked(false)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        //Act
+        authService.logout(rawRefreshToken);
+
+        //Assert
+        assertThat(refreshToken.isRevoked()).isTrue();
+
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository).save(refreshToken);
+    }
+
+    @Test
+    void logout_shouldDoNothingWhenRefreshTokenDoesNotExist() {
+        //Arrange
+        String rawRefreshToken = "invalid-refresh-token";
+        String tokenHash = "hashed-invalid-token";
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.empty());
+
+        //Act
+        authService.logout(rawRefreshToken);
+
+        //Assert
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void refresh_shouldHashRawRefreshTokenBeforeLookup() {
+        //Arrange
+        String rawRefreshToken = "raw-refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.empty());
+
+        //Act & Assert
+        assertThatThrownBy(() ->
+                authService.refresh(
+                        rawRefreshToken,
+                        mock(HttpServletRequest.class)
+                )).isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid refresh token");
+
+        //verify the raw token was hashed
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        //verify repository receives the hash, NOT the raw token
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository, never()).findByTokenHash(rawRefreshToken);
     }
 }
