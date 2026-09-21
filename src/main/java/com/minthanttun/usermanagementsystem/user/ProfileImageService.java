@@ -8,6 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Set;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -67,8 +72,26 @@ public class ProfileImageService {
         }
 
         BufferedImage image;
-        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes)) {
-            image = ImageIO.read(stream);
+        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+             ImageInputStream imageInput = ImageIO.createImageInputStream(stream)) {
+            if (imageInput == null) {
+                throw new IllegalArgumentException("File is not a valid JPEG, PNG, or WebP image");
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("File is not a valid JPEG, PNG, or WebP image");
+            }
+            ImageReader reader = readers.next();
+            try {
+                String format = reader.getFormatName().toLowerCase(Locale.ROOT);
+                if (!Set.of("jpeg", "jpg", "png", "webp").contains(format)) {
+                    throw new IllegalArgumentException("Only JPEG, PNG, or WebP images are allowed");
+                }
+                reader.setInput(imageInput);
+                image = reader.read(0);
+            } finally {
+                reader.dispose();
+            }
         }
 
         if (image == null) {

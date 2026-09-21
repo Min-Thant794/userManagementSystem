@@ -135,6 +135,13 @@ FILE: ./pom.xml
 			<version>1.6.1</version>
 		</dependency>
 
+		<!-- Open API-->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.13</version>
+		</dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -152,7 +159,7 @@ FILE: ./pom.xml
 			<artifactId>spring-dotenv</artifactId>
 			<version>4.0.0</version>
 		</dependency>
-	</dependencies>
+    </dependencies>
 
 	<build>
 		<plugins>
@@ -179,6 +186,8 @@ FILE: ./pom.xml
 							<goal>compile</goal>
 						</goals>
 						<configuration>
+							<parameters>true</parameters>
+
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
@@ -194,6 +203,8 @@ FILE: ./pom.xml
 							<goal>testCompile</goal>
 						</goals>
 						<configuration>
+							<parameters>true</parameters>
+
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
@@ -729,6 +740,953 @@ distributionType=only-script
 distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
 
 ============================================================
+FILE: ./docker-compose.yml
+============================================================
+services:
+
+  postgres:
+    image: postgres:18.3
+    container_name: usermanagementsystem-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  redis:
+    image: redis:7-alpine
+    container_name: usermanagementsystem-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${DOCKER_REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+============================================================
+FILE: ./src/test/java/com/minthanttun/usermanagementsystem/security/jwt/JwtServiceTest.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.minthanttun.usermanagementsystem.user.Role;
+import com.minthanttun.usermanagementsystem.user.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class JwtServiceTest {
+
+    private JwtService jwtService;
+
+    private static final String TEST_SECRET =
+            "test-secret-key-that-is-at-least-32-bytes-long-12345";
+
+    private static final long ACCESS_TOKEN_EXPIRY_MS = 15 * 60 * 1000L;
+    private static final long REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000L;
+
+    @BeforeEach
+    void setUp() {
+        jwtService = new JwtService(
+                TEST_SECRET,
+                ACCESS_TOKEN_EXPIRY_MS,
+                REFRESH_TOKEN_EXPIRY_MS
+        );
+    }
+
+    @Test
+    void generateAccessToken_shouldGenerateValidToken() {
+
+        //arrange
+        User user = createTestUser();
+
+        //act
+        String token = jwtService.generateAccessToken(user);
+
+        //assert
+        assertThat(token).isNotBlank();
+        assertThat(jwtService.isTokenValid(token)).isTrue();
+    }
+
+    private User createTestUser() {
+        User user = new User();
+
+        user.setId(UUID.randomUUID());
+        user.setUsername("testuser");
+        user.setRole(Role.USER);
+
+        return user;
+    }
+}
+
+============================================================
+FILE: ./src/test/java/com/minthanttun/usermanagementsystem/auth/AuthServiceTest.java
+============================================================
+package com.minthanttun.usermanagementsystem.auth;
+
+import com.minthanttun.usermanagementsystem.auth.dto.LoginRequest;
+import com.minthanttun.usermanagementsystem.auth.dto.SignupRequest;
+import com.minthanttun.usermanagementsystem.common.exception.*;
+import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenHasher;
+import com.minthanttun.usermanagementsystem.security.jwt.TokenIssuer;
+import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import com.minthanttun.usermanagementsystem.user.User;
+import com.minthanttun.usermanagementsystem.user.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    @Mock
+    private LoginAttemptService loginAttemptService;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private TokenHasher tokenHasher;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
+    private TokenIssuer tokenIssuer;
+
+    @Mock
+    private EmailVerificationService emailVerificationService;
+
+    private AuthService authService;
+
+    @BeforeEach
+    void setUp() {
+        authService = new AuthService(
+                loginAttemptService,
+                userRepository,
+                passwordEncoder,
+                authenticationManager,
+                tokenHasher,
+                refreshTokenRepository,
+                tokenIssuer,
+                emailVerificationService
+        );
+    }
+
+    @Test
+    void signup_shouldCreateUserSuccessfully() {
+        //arrange
+        SignupRequest request = new SignupRequest(
+                "testuser",
+                "test@example.com",
+                "+6594624174",
+                "Password123!"
+        );
+
+        User savedUser = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .phoneNumber("+6594624174")
+                .passwordHash("encoded-password")
+                .build();
+
+        when(userRepository.existsByUsername("testuser"))
+                .thenReturn(false);
+
+        when(userRepository.existsByEmail("test@example.com"))
+                .thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+6594624174"))
+                .thenReturn(false);
+
+        when(passwordEncoder.encode("Password123!"))
+                .thenReturn("encoded-password");
+
+        when(userRepository.save(any(User.class)))
+                .thenReturn(savedUser);
+
+        //Act
+        User result = authService.signup(request);
+
+        //Assert
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+
+        verify(userRepository).save(userCaptor.capture());
+
+        User userToSave = userCaptor.getValue();
+
+        assertThat(userToSave.getUsername())
+                .isEqualTo("testuser");
+
+        assertThat(userToSave.getEmail())
+                .isEqualTo("test@example.com");
+
+        assertThat(userToSave.getPhoneNumber())
+                .isEqualTo("+6594624174");
+
+        assertThat(userToSave.getPasswordHash())
+                .isEqualTo("encoded-password");
+
+        assertThat(userToSave.getPasswordHash())
+                .isNotEqualTo("Password123!");
+    }
+
+    @Test
+    void signup_shouldRejectDuplicateUsername() {
+        // Arrange
+        SignupRequest request = new SignupRequest(
+                "testuser",
+                "test@example.com",
+                "+6594624174",
+                "Password123!"
+        );
+
+        when(userRepository.existsByUsername("testuser"))
+                .thenReturn(true);
+
+        // Act & Assert
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Username is already taken");
+
+        // Verify nothing was created
+        verify(userRepository, never())
+                .existsByEmail(anyString());
+
+        verify(userRepository, never())
+                .existsByPhoneNumber(anyString());
+
+        verify(passwordEncoder, never())
+                .encode(anyString());
+
+        verify(userRepository, never())
+                .save(any(User.class));
+
+        verify(emailVerificationService, never())
+                .generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void signup_shouldRejectDuplicateEmail() {
+        //Arrange
+        SignupRequest request = new SignupRequest(
+                "testuser",
+                "test@example.com",
+                "+6594624174",
+                "Password123!"
+        );
+
+        when(userRepository.existsByUsername("testuser"))
+                .thenReturn(false);
+
+        when(userRepository.existsByEmail("test@example.com"))
+                .thenReturn(true);
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Email is already registered");
+
+        //Verify phone is not checked after duplicate email is detected
+        verify(userRepository, never())
+                .existsByPhoneNumber(anyString());
+
+        verify(passwordEncoder, never())
+                .encode(anyString());
+
+        verify(userRepository, never())
+                .save(any(User.class));
+
+        verify(emailVerificationService, never())
+                .generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void signup_shouldRejectDuplicatePhoneNumber() {
+        //Arrange
+        SignupRequest request = new SignupRequest(
+                "testuser",
+                "test@example.com",
+                "+6594624174",
+                "Password123!"
+        );
+
+        when(userRepository.existsByUsername("testuser"))
+                .thenReturn(false);
+
+        when(userRepository.existsByEmail("test@example.com"))
+                .thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+6594624174"))
+                .thenReturn(true);
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Phone number is already registered");
+
+        //verify password is never processed
+        verify(passwordEncoder, never())
+                .encode(anyString());
+
+        //verify user is never created
+        verify(userRepository, never())
+                .save(any(User.class));
+
+        //verify verification email is never sent
+        verify(emailVerificationService, never())
+                .generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void signup_shouldEncodePasswordBeforeSaving() {
+        //Arrange
+        SignupRequest request = new SignupRequest(
+                "testuser",
+                "test@example.com",
+                "+6594624174",
+                "Password123!"
+        );
+
+        User savedUser = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .phoneNumber("+6594624174")
+                .passwordHash("encoded-password")
+                .build();
+
+        when(userRepository.existsByUsername("testuser"))
+                .thenReturn(false);
+
+        when(userRepository.existsByEmail("test@example.com"))
+                .thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+6594624174"))
+                .thenReturn(false);
+
+        when(passwordEncoder.encode("Password123!"))
+                .thenReturn("encoded-password");
+
+        when(userRepository.save(any(User.class)))
+                .thenReturn(savedUser);
+
+        //Act
+        authService.signup(request);
+
+        //Assert
+        verify(passwordEncoder)
+                .encode("Password123!");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+
+        verify(userRepository).save(captor.capture());
+
+        assertThat(captor.getValue().getPasswordHash())
+                .isEqualTo("encoded-password");
+    }
+
+    @Test
+    void login_shouldRejectUnverifiedEmail() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "testuser",
+                "Password123!"
+        );
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(false)
+                .build();
+
+        when(userRepository.findByUsername("testuser"))
+                .thenReturn(Optional.of(user));
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.login(request, mock(HttpServletRequest.class)))
+                .isInstanceOf(EmailNotVerifiedException.class)
+                .hasMessage("Please verify your email address before logging in");
+
+        //Authentication must never happen
+        verify(authenticationManager, never())
+                .authenticate(any());
+
+        verify(loginAttemptService, never())
+                .recordFailedAttempt(anyString());
+
+        verify(tokenIssuer, never())
+                .issueNewSession(any(User.class), any(HttpServletRequest.class));
+    }
+
+    @Test
+    void login_shouldAuthenticateSuccessfullyWithUsername() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "testuser",
+                "Password123!"
+        );
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(true)
+                .failedLoginAttempts(0)
+                .build();
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        TokenIssuer.IssuedTokens issuedTokens = mock(TokenIssuer.IssuedTokens.class);
+
+        when(userRepository.findByUsername("testuser"))
+                .thenReturn(Optional.of(user));
+
+        when(authenticationManager.authenticate(any()))
+                .thenReturn(
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities()
+                        )
+                );
+
+        when(tokenIssuer.issueNewSession(user, httpRequest)).thenReturn(issuedTokens);
+
+        //Act
+        TokenIssuer.IssuedTokens result = authService.login(request, httpRequest);
+
+        //Assert
+        assertThat(result).isSameAs(issuedTokens);
+
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+
+        verify(tokenIssuer).issueNewSession(user, httpRequest);
+
+        verify(loginAttemptService, never()).recordFailedAttempt(anyString());
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void login_shouldRejectInvalidCredentialsAndRecordFailedAttempt() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "testuser",
+                "WrongPassword123!"
+        );
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByUsername("testuser"))
+                .thenReturn(Optional.of(user));
+
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.login(request, httpRequest))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid username or password");
+
+        //Failed attempt must be recorded
+        verify(loginAttemptService)
+                .recordFailedAttempt("testuser");
+
+        //No token should be issued
+        verify(tokenIssuer, never())
+                .issueNewSession(any(User.class), any(HttpServletRequest.class));
+    }
+
+    @Test
+    void login_shouldRejectLockedAccount() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "testuser",
+                "Password123!"
+        );
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(true)
+                .build();
+
+        when(userRepository.findByUsername("testuser"))
+                .thenReturn(Optional.of(user));
+
+        when(authenticationManager.authenticate(any()))
+                .thenThrow(new LockedException("Account locked"));
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.login(request, httpRequest))
+                .isInstanceOf(AccountSuspendedException.class)
+                .hasMessage("This account has been suspended or is temporarily locked");
+
+        //Failed-attempt counter should NOT be recorded here
+        verify(loginAttemptService, never()).recordFailedAttempt(anyString());
+
+        //No token should be issued
+        verify(tokenIssuer, never()).issueNewSession(any(User.class), any(HttpServletRequest.class));
+    }
+
+    @Test
+    void login_shouldAuthenticateSuccessfullyWithEmail() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "test@example.com",
+                "Password123!"
+        );
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(true)
+                .failedLoginAttempts(0)
+                .build();
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        TokenIssuer.IssuedTokens issuedTokens = mock(TokenIssuer.IssuedTokens.class);
+
+        when(userRepository.findByUsername("test@example.com")).thenReturn(Optional.empty());
+
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
+
+        when(authenticationManager.authenticate(any()))
+                .thenReturn(
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        )
+                );
+
+        when(tokenIssuer.issueNewSession(user, httpRequest)).thenReturn(issuedTokens);
+
+        //Act
+        TokenIssuer.IssuedTokens result = authService.login(request, httpRequest);
+
+        //Assert
+        assertThat(result).isSameAs(issuedTokens);
+
+        //Authentication must use the user's username, not their email.
+        ArgumentCaptor<UsernamePasswordAuthenticationToken> captor = ArgumentCaptor.forClass(
+                UsernamePasswordAuthenticationToken.class
+        );
+
+        verify(authenticationManager).authenticate(captor.capture());
+
+        assertThat(captor.getValue().getPrincipal()).isEqualTo("testuser");
+
+        assertThat(captor.getValue().getCredentials()).isEqualTo("Password123!");
+
+        verify(tokenIssuer).issueNewSession(user, httpRequest);
+    }
+
+    @Test
+    void login_shouldResetFailedAttemptsAfterSuccessfulLogin() {
+        //Arrange
+        LoginRequest request = new LoginRequest(
+                "testuser",
+                "Password123!"
+        );
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .emailVerified(true)
+                .failedLoginAttempts(3)
+                .lockedUntil(OffsetDateTime.now().plusMinutes(10))
+                .build();
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        TokenIssuer.IssuedTokens issuedTokens = mock(TokenIssuer.IssuedTokens.class);
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
+
+        when(authenticationManager.authenticate(any())).thenReturn(
+                new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                )
+        );
+
+        when(tokenIssuer.issueNewSession(user, httpRequest)).thenReturn(issuedTokens);
+
+        //Act
+        authService.login(request, httpRequest);
+
+        //Assert
+        assertThat(user.getFailedLoginAttempts()).isZero();
+
+        assertThat(user.getLockedUntil()).isNull();
+
+        verify(userRepository).save(user);
+
+        verify(tokenIssuer).issueNewSession(user, httpRequest);
+    }
+
+    @Test
+    void refresh_shouldIssueNewTokenPairSuccessfully() {
+        //Arrange
+        String rawRefreshToken = "refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        Long tokenId = 1L;
+        UUID familyId = UUID.randomUUID();
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .status(AccountStatus.ACTIVE)
+                .build();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .familyId(familyId)
+                .user(user)
+                .expiresAt(OffsetDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+
+        TokenIssuer.IssuedTokens issuedTokens = mock(TokenIssuer.IssuedTokens.class);
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        when(refreshTokenRepository.revokeIfActive(tokenId)).thenReturn(1);
+
+        when(tokenIssuer.issueTokenPair(
+                user,
+                familyId,
+                httpRequest
+        )).thenReturn(issuedTokens);
+
+        //Act
+        TokenIssuer.IssuedTokens result = authService.refresh(rawRefreshToken, httpRequest);
+
+        //Assert
+        assertThat(result).isSameAs(issuedTokens);
+
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository).revokeIfActive(anyLong());
+
+        verify(tokenIssuer).issueTokenPair(user, familyId, httpRequest);
+
+        verify(refreshTokenRepository, never()).revokeFamily(any(UUID.class));
+    }
+
+    @Test
+    void refresh_shouldRejectExpiredRefreshToken() {
+        //Arrange
+        String rawRefreshToken = "expired-refresh-token";
+        String tokenHash = "hashed-expired-token";
+
+        Long tokenId = 1L;
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .status(AccountStatus.ACTIVE)
+                .build();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .user(user)
+                .expiresAt(OffsetDateTime.now().minusMinutes(1))
+                .revoked(false)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.refresh(
+                rawRefreshToken,
+                mock(HttpServletRequest.class)
+        )).isInstanceOf(InvalidCredentialsException.class).hasMessage("Refresh token has expired");
+
+        //Expired token must not be rotated
+        verify(refreshTokenRepository, never()).revokeIfActive(anyLong());
+
+        verify(tokenIssuer, never()).issueTokenPair(
+                any(User.class),
+                any(UUID.class),
+                any(HttpServletRequest.class)
+        );
+    }
+
+    @Test
+    void refresh_shouldRejectInvalidRefreshToken() {
+        //Arrange
+        String rawRefreshToken = "invalid-refresh-token";
+        String tokenHash = "hashed-invalid-token";
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.empty());
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.refresh(
+                rawRefreshToken,
+                mock(HttpServletRequest.class)
+        ))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid refresh token");
+
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository, never()).revokeIfActive(anyLong());
+
+        verify(refreshTokenRepository, never()).revokeFamily(any(UUID.class));
+
+        verify(tokenIssuer, never()).issueTokenPair(
+                any(User.class),
+                any(UUID.class),
+                any(HttpServletRequest.class)
+        );
+    }
+
+    @Test
+    void refresh_shouldDetectRefreshTokenReuseAndRevokeFamily() {
+        //Arrange
+        String rawRefreshToken = "reused-refresh-token";
+        String tokenHash = "hash-reused-token";
+
+        Long tokenId = 1L;
+        UUID familyId = UUID.randomUUID();
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .status(AccountStatus.ACTIVE)
+                .build();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .familyId(familyId)
+                .user(user)
+                .expiresAt(OffsetDateTime.now().plusDays(7))
+                .revoked(true)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        //Token was already consumed/revoked
+        when(refreshTokenRepository.revokeIfActive(tokenId)).thenReturn(0);
+
+        //Act & Assert
+        assertThatThrownBy(() -> authService.refresh(
+                rawRefreshToken,
+                mock(HttpServletRequest.class)
+        ))
+                .isInstanceOf(RefreshTokenReuseException.class)
+                .hasMessage("This session has been compromised or reused. Please log in again");
+
+        //Entire token family must be revoked
+        verify(refreshTokenRepository).revokeFamily(familyId);
+
+        //Now new tokens should be issued
+        verify(tokenIssuer, never())
+                .issueTokenPair(
+                        any(User.class),
+                        any(UUID.class),
+                        any(HttpServletRequest.class)
+                );
+    }
+
+    @Test
+    void refresh_shouldRejectSuspendedAccount() {
+        //Arrange
+        String rawRefreshToken = "refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        Long tokenId = 1L;
+        UUID familyId = UUID.randomUUID();
+
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .status(AccountStatus.SUSPENDED)
+                .build();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .familyId(familyId)
+                .user(user)
+                .expiresAt(OffsetDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        when(refreshTokenRepository.revokeIfActive(tokenId)).thenReturn(1);
+
+        //Act & Assert
+        assertThatThrownBy(() ->
+                authService.refresh(rawRefreshToken, httpRequest)
+        )
+                .isInstanceOf(AccountSuspendedException.class)
+                .hasMessage("This account has been suspended");
+
+        //Token was consumed, but no new token pair should be issued
+        verify(refreshTokenRepository).revokeIfActive(tokenId);
+
+        verify(tokenIssuer, never()).issueTokenPair(
+                any(User.class),
+                any(UUID.class),
+                any(HttpServletRequest.class)
+        );
+
+    }
+
+    @Test
+    void logout_shouldRevokeExistingRefreshToken() {
+        //Arrange
+        String rawRefreshToken = "refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        Long tokenId = 1L;
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(tokenId)
+                .tokenHash(tokenHash)
+                .revoked(false)
+                .build();
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(refreshToken));
+
+        //Act
+        authService.logout(rawRefreshToken);
+
+        //Assert
+        assertThat(refreshToken.isRevoked()).isTrue();
+
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository).save(refreshToken);
+    }
+
+    @Test
+    void logout_shouldDoNothingWhenRefreshTokenDoesNotExist() {
+        //Arrange
+        String rawRefreshToken = "invalid-refresh-token";
+        String tokenHash = "hashed-invalid-token";
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.empty());
+
+        //Act
+        authService.logout(rawRefreshToken);
+
+        //Assert
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void refresh_shouldHashRawRefreshTokenBeforeLookup() {
+        //Arrange
+        String rawRefreshToken = "raw-refresh-token";
+        String tokenHash = "hashed-refresh-token";
+
+        when(tokenHasher.hash(rawRefreshToken)).thenReturn(tokenHash);
+
+        when(refreshTokenRepository.findByTokenHash(tokenHash)).thenReturn(Optional.empty());
+
+        //Act & Assert
+        assertThatThrownBy(() ->
+                authService.refresh(
+                        rawRefreshToken,
+                        mock(HttpServletRequest.class)
+                )).isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid refresh token");
+
+        //verify the raw token was hashed
+        verify(tokenHasher).hash(rawRefreshToken);
+
+        //verify repository receives the hash, NOT the raw token
+        verify(refreshTokenRepository).findByTokenHash(tokenHash);
+
+        verify(refreshTokenRepository, never()).findByTokenHash(rawRefreshToken);
+    }
+}
+
+============================================================
 FILE: ./src/test/java/com/minthanttun/usermanagementsystem/UsermanagementsystemApplicationTests.java
 ============================================================
 package com.minthanttun.usermanagementsystem;
@@ -743,6 +1701,642 @@ class UsermanagementsystemApplicationTests {
 	void contextLoads() {
 	}
 
+}
+
+============================================================
+FILE: ./src/test/java/com/minthanttun/usermanagementsystem/user/UserServiceTest.java
+============================================================
+package com.minthanttun.usermanagementsystem.user;
+
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationService;
+import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
+import com.minthanttun.usermanagementsystem.common.exception.InvalidCredentialsException;
+import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
+import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
+import com.minthanttun.usermanagementsystem.security.jwt.SessionRevocationService;
+import com.minthanttun.usermanagementsystem.user.dto.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private ProfileImageService profileImageService;
+
+    @Mock
+    private EmailVerificationService emailVerificationService;
+
+    @Mock
+    private SessionRevocationService sessionRevocationService;
+
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        userService = new UserService(
+                userRepository,
+                passwordEncoder,
+                profileImageService,
+                emailVerificationService,
+                sessionRevocationService
+        );
+    }
+
+    @Test
+    void updateProfile_shouldUpdateUserSuccessfully() {
+        //Arrange
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("olduser")
+                .email("old@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = mock(UpdateProfileRequest.class);
+
+        when(request.username()).thenReturn("newuser");
+
+        when(request.email()).thenReturn("new@example.com");
+
+        when(request.phoneNumber()).thenReturn("+659222222");
+
+        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+
+        when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+
+        when(userRepository.existsByPendingEmail("new@example.com")).thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+659222222")).thenReturn(false);
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        //Act
+        User result = userService.updateProfile(user, request);
+
+        //Assert
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getUsername()).isEqualTo("newuser");
+
+        assertThat(user.getEmail()).isEqualTo("old@example.com");
+
+        assertThat(user.getPendingEmail()).isEqualTo("new@example.com");
+
+        assertThat(user.getPhoneNumber()).isEqualTo("+659222222");
+
+        verify(userRepository).save(user);
+
+        verify(emailVerificationService).generateVerificationEmail(
+                user,
+                "new@example.com"
+        );
+    }
+
+    @Test
+    void updateProfile_shouldRejectDuplicateUsername() {
+        //Arrange
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("olduser")
+                .email("old@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = new UpdateProfileRequest(
+                "existinguser",
+                null,
+                null
+        );
+
+        when(userRepository.existsByUsername("existinguser")).thenReturn(true);
+
+        //Act & Assert
+        assertThatThrownBy(() -> userService.updateProfile(user, request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Username is already taken");
+
+        //Nothing should be saved
+        verify(userRepository).existsByUsername("existinguser");
+
+        verify(userRepository, never()).existsByEmail(anyString());
+
+        verify(userRepository, never()).existsByPendingEmail(anyString());
+
+        verify(userRepository, never()).existsByPhoneNumber(anyString());
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void updateProfile_shouldRejectDuplicateEmail() {
+        // Arrange
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .email("old@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = new UpdateProfileRequest(
+                null,
+                "existing@example.com",
+                null
+        );
+
+        when(userRepository.existsByEmail("existing@example.com"))
+                .thenReturn(true);
+
+        // Act & Assert
+        assertThatThrownBy(() ->
+                userService.updateProfile(user, request)
+        )
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Email is already registered");
+
+        verify(userRepository).existsByEmail("existing@example.com");
+        verify(userRepository, never()).existsByPendingEmail(anyString());
+        verify(userRepository, never()).save(any(User.class));
+        verify(emailVerificationService, never())
+                .generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void updateProfile_shouldRejectDuplicatePhoneNumber() {
+        //Arrange
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = mock(UpdateProfileRequest.class);
+
+        when(request.username()).thenReturn(null);
+
+        when(request.email()).thenReturn(null);
+
+        when(request.phoneNumber()).thenReturn("+6592222222");
+
+        when(userRepository.existsByPhoneNumber("+6592222222")).thenReturn(true);
+
+        //Act & Assert
+        assertThatThrownBy(() -> userService.updateProfile(user, request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Phone number is already registered");
+
+        verify(userRepository, never()).save(any(User.class));
+
+        assertThat(user.getPhoneNumber()).isEqualTo("+6591111111");
+    }
+
+    @Test
+    void updateProfile_shouldRejectDuplicatePendingEmail() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .email("old@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = new UpdateProfileRequest(
+                null,
+                "pending@example.com",
+                null
+        );
+
+        when(userRepository.existsByEmail("pending@example.com")).thenReturn(false);
+        when(userRepository.existsByPendingEmail("pending@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.updateProfile(user, request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Email is already registered");
+
+        verify(userRepository).existsByEmail("pending@example.com");
+        verify(userRepository).existsByPendingEmail("pending@example.com");
+        verify(userRepository, never()).save(any(User.class));
+        verify(emailVerificationService, never())
+                .generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void updateProfile_shouldNotChangeUnspecifiedOrUnchangedFields() {
+        User user = User.builder()
+                .username("testuser")
+                .email("test@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        UpdateProfileRequest request = mock(UpdateProfileRequest.class);
+
+        when(request.username()).thenReturn("testuser");
+
+        when(request.email()).thenReturn(null);
+
+        when(request.phoneNumber()).thenReturn("+6591111111");
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        User result = userService.updateProfile(user, request);
+
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getUsername()).isEqualTo("testuser");
+
+        assertThat(user.getEmail()).isEqualTo("test@example.com");
+
+        assertThat(user.getPhoneNumber()).isEqualTo("+6591111111");
+
+        assertThat(user.getPendingEmail()).isNull();
+
+        verify(userRepository).save(user);
+
+        verify(userRepository, never()).existsByUsername(anyString());
+
+        verify(userRepository, never()).existsByEmail(anyString());
+
+        verify(userRepository, never()).existsByPendingEmail(anyString());
+
+        verify(userRepository, never()).existsByPhoneNumber(anyString());
+
+        verify(emailVerificationService, never()).generateVerificationEmail(any(User.class), anyString());
+    }
+
+    @Test
+    void uploadProfilePhoto_shouldUploadAndSaveUrl() {
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("testuser")
+                .build();
+
+        MultipartFile file = mock(MultipartFile.class);
+
+        String imageUrl = "https://example.com/profile-image.jpg";
+
+        when(profileImageService.uploadImage(file, userId)).thenReturn(imageUrl);
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        User result = userService.uploadProfilePhoto(user, file);
+
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getProfileImageUrl()).isEqualTo(imageUrl);
+
+        verify(profileImageService).uploadImage(file, userId);
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void deleteProfilePhoto_shouldDeleteExistingPhoto() {
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("testuser")
+                .profileImageUrl("https://example.com/profile-image.jpg")
+                .build();
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        User result = userService.deleteProfilePhoto(user);
+
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getProfileImageUrl()).isNull();
+
+        verify(profileImageService).deleteImage(userId);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void deleteProfilePhoto_shouldDoNothingWhenNoPhotoExists() {
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("testuser")
+                .profileImageUrl(null)
+                .build();
+
+        User result = userService.deleteProfilePhoto(user);
+
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getProfileImageUrl()).isNull();
+
+        verify(profileImageService, never()).deleteImage(any(UUID.class));
+
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void changePassword_shouldRejectWhenNoPasswordExists() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .email("test@example.com")
+                .build();
+
+        ChangePasswordRequest request = new ChangePasswordRequest(
+                "currentPassword",
+                "newPassword"
+        );
+
+        assertThatThrownBy(() -> userService.changePassword(user, request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("This account has no password set yet. Use the set-password endpoint instead.");
+
+        verifyNoInteractions(passwordEncoder);
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoInteractions(sessionRevocationService);
+    }
+
+    @Test
+    void changePassword_shouldRejectIncorrectCurrentPassword() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .email("test@example.com")
+                .passwordHash("existing-hash")
+                .build();
+
+        ChangePasswordRequest request = new ChangePasswordRequest(
+                "wrongPassword",
+                "newPassword"
+        );
+
+        when(passwordEncoder.matches("wrongPassword", "existing-hash"))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> userService.changePassword(user, request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Current password is incorrect");
+
+        verify(passwordEncoder).matches("wrongPassword", "existing-hash");
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoInteractions(sessionRevocationService);
+    }
+
+    @Test
+    void changePassword_shouldUpdatePasswordAndRevokeSessions() {
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("testuser")
+                .passwordHash("old-hash")
+                .build();
+
+        ChangePasswordRequest request = mock(ChangePasswordRequest.class);
+
+        when(request.currentPassword()).thenReturn("oldPassword");
+
+        when(request.newPassword()).thenReturn("newPassword");
+
+        when(passwordEncoder.matches("oldPassword", "old-hash"))
+                .thenReturn(true);
+
+        when(passwordEncoder.encode("newPassword")).thenReturn("new-hash");
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        userService.changePassword(user, request);
+
+        assertThat(user.getPasswordHash()).isEqualTo("new-hash");
+
+        verify(passwordEncoder).matches("oldPassword", "old-hash");
+
+        verify(passwordEncoder).encode("newPassword");
+
+        verify(userRepository).save(user);
+
+        verify(sessionRevocationService).revokeAllSessions(userId);
+    }
+
+    @Test
+    void setInitialPassword_shouldRejectWhenPasswordAlreadyExists() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .email("test@example.com")
+                .passwordHash("existing-hash")
+                .build();
+
+        SetInitialPasswordRequest request =
+                new SetInitialPasswordRequest("newPassword");
+
+        assertThatThrownBy(() -> userService.setInitialPassword(user, request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("This account already has a password. Use the change-password endpoint instead.");
+
+        verifyNoInteractions(passwordEncoder);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void setInitialPassword_shouldSetPasswordSuccessfully() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("testuser")
+                .passwordHash(null)
+                .build();
+
+        SetInitialPasswordRequest request = mock(SetInitialPasswordRequest.class);
+
+        when(request.newPassword()).thenReturn("newPassword");
+
+        when(passwordEncoder.encode("newPassword")).thenReturn("encoded-new-password");
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        userService.setInitialPassword(user, request);
+
+        assertThat(user.getPasswordHash()).isEqualTo("encoded-new-password");
+
+        verify(passwordEncoder).encode("newPassword");
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void completeProfile_shouldRejectWhenProfileIsAlreadyComplete() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username("existinguser")
+                .email("existing@example.com")
+                .phoneNumber("+6591111111")
+                .build();
+
+        CompleteProfileRequest request = new CompleteProfileRequest(
+                "newuser",
+                "+6592222222"
+        );
+
+        assertThatThrownBy(() -> userService.completeProfile(user, request))
+                .isInstanceOf(ProfileIncompleteException.class)
+                .hasMessage("Profile is already complete");
+
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void completeProfile_shouldRejectDuplicateUsername() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("test@example.com")
+                .build();
+
+        CompleteProfileRequest request = new CompleteProfileRequest(
+                "existinguser",
+                "+6592222222"
+        );
+
+        when(userRepository.existsByUsername("existinguser")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.completeProfile(user, request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Username is already taken");
+
+        verify(userRepository).existsByUsername("existinguser");
+        verify(userRepository, never()).existsByPhoneNumber(anyString());
+        verify(userRepository, never()).save(any(User.class));
+
+        assertThat(user.getUsername()).isNull();
+        assertThat(user.getPhoneNumber()).isNull();
+    }
+
+    @Test
+    void completeProfile_shouldRejectDuplicatePhoneNumber() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("test@example.com")
+                .build();
+
+        CompleteProfileRequest request = new CompleteProfileRequest(
+                "newuser",
+                "+6592222222"
+        );
+
+        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+6592222222")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.completeProfile(user, request))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("Phone number is already registered");
+
+        verify(userRepository).existsByUsername("newuser");
+
+        verify(userRepository).existsByPhoneNumber("+6592222222");
+
+        verify(userRepository, never()).save(any(User.class));
+
+        assertThat(user.getUsername()).isNull();
+
+        assertThat(user.getPhoneNumber()).isNull();
+    }
+
+    @Test
+    void completeProfile_shouldCompleteProfileSuccessfully() {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("test@example.com")
+                .build();
+
+        CompleteProfileRequest request = new CompleteProfileRequest(
+                "newuser",
+                "+6592222222"
+        );
+
+        when(userRepository.existsByUsername("newuser")).thenReturn(false);
+
+        when(userRepository.existsByPhoneNumber("+6592222222")).thenReturn(false);
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        User result = userService.completeProfile(user, request);
+
+        assertThat(result).isSameAs(user);
+
+        assertThat(user.getUsername()).isEqualTo("newuser");
+
+        assertThat(user.getPhoneNumber()).isEqualTo("+6592222222");
+
+        verify(userRepository).existsByUsername("newuser");
+
+        verify(userRepository).existsByPhoneNumber("+6592222222");
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void getCachedProfile_shouldReturnUserResponse() {
+        UUID userId = UUID.randomUUID();
+
+        User user = User.builder()
+                .id(userId)
+                .username("testuser")
+                .email("test@example.com")
+                .pendingEmail("new@example.com")
+                .phoneNumber("+6591234567")
+                .role(Role.USER)
+                .profileImageUrl("https://example.com/avatar.jpg")
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UserResponse result = userService.getCachedProfile(userId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(userId);
+        assertThat(result.username()).isEqualTo("testuser");
+        assertThat(result.email()).isEqualTo("test@example.com");
+        assertThat(result.pendingEmail()).isEqualTo("new@example.com");
+        assertThat(result.phoneNumber()).isEqualTo("+6591234567");
+        assertThat(result.role()).isEqualTo(Role.USER);
+        assertThat(result.profileImageUrl())
+                .isEqualTo("https://example.com/avatar.jpg");
+
+        verify(userRepository).findById(userId);
+    }
+
+    @Test
+    void getCachedProfile_shouldThrowWhenUserNotFound() {
+        UUID userId = UUID.randomUUID();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getCachedProfile(userId))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("User not found: " + userId);
+
+        verify(userRepository).findById(userId);
+    }
 }
 
 ============================================================
@@ -881,9 +2475,9 @@ FILE: ./src/main/resources/application.properties
 spring.application.name=usermanagementsystem
 
 # PostgreSQL
-spring.datasource.url=jdbc:postgresql://localhost:5432/user_management_system
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
+spring.datasource.url=jdbc:postgresql://localhost:5433/${POSTGRES_DB}
+spring.datasource.username=${POSTGRES_USER}
+spring.datasource.password=${POSTGRES_PASSWORD}
 
 # JPA / Hibernate
 spring.jpa.hibernate.ddl-auto=validate
@@ -895,6 +2489,8 @@ spring.jpa.open-in-view=false
 spring.flyway.enabled=true
 spring.flyway.locations=classpath:db/migration
 spring.flyway.baseline-on-migrate=true
+
+spring.jackson.deserialization.fail-on-unknown-properties=true
 
 # CORS
 app.cors.allowed-origins=http://localhost:5173
@@ -973,6 +2569,7 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/SecurityConfig
 ============================================================
 package com.minthanttun.usermanagementsystem.config;
 
+import com.minthanttun.usermanagementsystem.security.jwt.JwtAccessDeniedHandler;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthFilter;
 import com.minthanttun.usermanagementsystem.security.jwt.JwtAuthenticationEntryPoint;
 import com.minthanttun.usermanagementsystem.security.oauth2.CustomOidcUserService;
@@ -1006,6 +2603,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final RateLimitFilter rateLimitFilter;
@@ -1042,8 +2640,16 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh",
                                 "/api/auth/logout", "/api/auth/forgot-password", "/api/auth/reset-password",
                                 "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
@@ -1060,6 +2666,40 @@ public class SecurityConfig {
         return http.build();
     }
 }
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/OpenApiConfig.java
+============================================================
+package com.minthanttun.usermanagementsystem.config;
+
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@SecurityScheme(
+        name= "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT"
+)
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI userManagementSystemOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("User Management System API")
+                        .version("1.0.0")
+                        .description("REST API for user registration, authentication, and account management.")
+                        .contact(new Contact()
+                                .name("Min Thant Tun")));
+    }
+}
+
 ============================================================
 FILE: ./src/main/java/com/minthanttun/usermanagementsystem/config/RateLimitRule.java
 ============================================================
@@ -1378,8 +3018,54 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
         }
 
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.getWriter().write(objectMapper.writeValueAsString(problem));
+    }
+}
+============================================================
+FILE: ./src/main/java/com/minthanttun/usermanagementsystem/security/jwt/JwtAccessDeniedHandler.java
+============================================================
+package com.minthanttun.usermanagementsystem.security.jwt;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAccessDeniedHandler implements AccessDeniedHandler {
+
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void handle(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AccessDeniedException accessDeniedException
+    ) throws IOException {
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.FORBIDDEN,
+                "You do not have permission to access this resource"
+        );
+
+        problem.setTitle("Forbidden");
+
+        response.setStatus(HttpStatus.FORBIDDEN.value());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+
+        response.getWriter().write(
+                objectMapper.writeValueAsString(problem)
+        );
     }
 }
 ============================================================
@@ -1418,11 +3104,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-//        System.out.println("===== JWT FILTER =====");
-//        System.out.println("URI: " + request.getRequestURI());
-//        System.out.println("METHOD: " + request.getMethod());
-//        System.out.println("Authorization: " + request.getHeader("Authorization"));
-//        System.out.println("Content-Type: " + request.getContentType());
+        System.out.println("===== JWT FILTER =====");
+        System.out.println("URI: " + request.getRequestURI());
+        System.out.println("METHOD: " + request.getMethod());
+        System.out.println("Authorization: " + request.getHeader("Authorization"));
+        System.out.println("Content-Type: " + request.getContentType());
 
         String authHeader = request.getHeader("Authorization");
 
@@ -1432,10 +3118,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-//        System.out.println("Token present: " + !token.isBlank());
-//        System.out.println("Token valid: " + jwtService.isTokenValid(token));
-//        System.out.println("Token expired: " + jwtService.isTokenExpired(token));
-//        System.out.println("Token type: " + jwtService.extractTokenType(token));
+       System.out.println("Token present: " + !token.isBlank());
+        System.out.println("Token valid: " + jwtService.isTokenValid(token));
+       System.out.println("Token expired: " + jwtService.isTokenExpired(token));
+        System.out.println("Token type: " + jwtService.extractTokenType(token));
 
         if (!jwtService.isTokenValid(token) || jwtService.isTokenExpired(token)) {
             filterChain.doFilter(request, response);
@@ -1473,9 +3159,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-//            System.out.println(">>> JWT AUTHENTICATION SUCCESS");
-//            System.out.println("User ID: " + customUserDetails.getUser().getId());
-//            System.out.println("Profile complete: " + customUserDetails.getUser().isProfileComplete());
+            System.out.println(">>> JWT AUTHENTICATION SUCCESS");
+            System.out.println("User ID: " + customUserDetails.getUser().getId());
+            System.out.println("Profile complete: " + customUserDetails.getUser().isProfileComplete());
 
             var authToken = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities()
@@ -2116,12 +3802,21 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/SignupReques
 ============================================================
 package com.minthanttun.usermanagementsystem.auth.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record SignupRequest (
+
+        @Schema(
+                description = "Unique username for the user account",
+                example = "john_doe",
+                minLength = 3,
+                maxLength = 50,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Username is required")
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters.")
         @Pattern(
@@ -2130,11 +3825,23 @@ public record SignupRequest (
         )
         String username,
 
+        @Schema(
+                description = "Email address associated with the user account",
+                example = "john.doe@example.com",
+                maxLength = 255,
+                format = "email",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Email is required")
         @Email(message = "Email must be a valid email address")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
 
+        @Schema(
+                description = "User's phone number in international or local numeric format",
+                example = "+6591234567",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Phone number is required")
         @Pattern(
                 regexp = "^\\+?[0-9]{7,15}$",
@@ -2142,6 +3849,13 @@ public record SignupRequest (
         )
         String phoneNumber,
 
+        @Schema(
+                description = "Password for the user account. Must contain at least 8 characters, including at least one letter and one number.",
+                example = "SecurePassword123",
+                minLength = 8,
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Password is required")
         @Size(min = 8, message = "Password must be at least 8 characters")
         @Pattern(
@@ -2171,9 +3885,26 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/AuthResponse
 ============================================================
 package com.minthanttun.usermanagementsystem.auth.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record AuthResponse(
+
+        @Schema(
+                description = "JWT access token used to authenticate API requests.",
+                example = "eyJhbGciOiJIUzI1NiJ9..."
+        )
         String accessToken,
+
+        @Schema(
+                description = "Authentication scheme used with the access token.",
+                example = "Bearer"
+        )
         String tokenType,
+
+        @Schema(
+                description = "Number of seconds until the access token expires.",
+                example = "900"
+        )
         long expiresIn
 ) {
     public static AuthResponse of(String accessToken, long expiresInMs) {
@@ -2185,13 +3916,25 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/LoginRequest
 ============================================================
 package com.minthanttun.usermanagementsystem.auth.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest (
+        @Schema(
+                description = "Username or email address used to authenticate the user",
+                example = "exampleUsername",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Username or email is required")
         String identifier,
 
-        @NotBlank(message = "Password is reuqired")
+        @Schema(
+                description = "Password associated with the user account",
+                example = "SecurePassword123",
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotBlank(message = "Password is required")
         String password
 ){
 }
@@ -2254,14 +3997,45 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/dto/SessionRespo
 ============================================================
 package com.minthanttun.usermanagementsystem.auth.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
 public record SessionResponse (
+
+        @Schema(
+                description = "Unique identifier of the session",
+                example = "123"
+        )
         Long id,
+
+        @Schema(
+                description = "Device or client used to create the session.",
+                example = "MacBook Pro - Chrome"
+        )
         String device,
+
+        @Schema(
+                description = "Approximate location associated with the session.",
+                example = "Singapore"
+        )
         String location,
+
+        @Schema(
+                description = "Timestamp when the session was lat used.",
+                example = "2026-09-08T18:45:30+08:00"
+        )
         OffsetDateTime lastUsedAt,
+
+        @Schema(
+                description = "Timestamp when the session was created.",
+                example = "2026-09-08T18:45:30+08:00"
+        )
         OffsetDateTime createdAt,
+
+        @Schema(
+                description = "Indicates whether this is the session currently being used by the authenticated user.",
+                example = "true"
+        )
         boolean current
 ) {
 }
@@ -2598,6 +4372,13 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/auth/AuthController.j
 ============================================================
 package com.minthanttun.usermanagementsystem.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import com.minthanttun.usermanagementsystem.auth.dto.*;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.security.jwt.CookieUtil;
@@ -2625,24 +4406,100 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final SessionService sessionService;
 
+    @Operation(
+            summary = "Register a new user",
+            description = "Creates a new user account."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "User successfully registered",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid registration data"
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Username or email already exists"
+            )
+    })
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
         User created = authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
     }
 
+    @Operation(
+            summary = "Verify email address",
+            description = "Verifies a user's email address using the verification token."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Email successfully verified"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid or expired verification token"
+            )
+    })
     @PostMapping("/verify-email")
     public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
         emailVerificationService.verifyEmail(request.token());
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Resend email verification",
+            description = "Sends a new email verification message to the specified email address."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Verification email request processed successfully"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid email address"
+            )
+    })
     @PostMapping("/resend-verification")
     public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
         emailVerificationService.resendVerification(request.email());
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Authentication user",
+            description = "Authentications a user and returns an access token. A refresh token is issued as an HTTP cookie."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Authentication successful",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid login request"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid username or password"
+            ),
+            @ApiResponse(
+                    responseCode = "423",
+                    description = "Account is locked"
+            )
+    })
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
@@ -2653,6 +4510,24 @@ public class AuthController {
         return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
 
+    @Operation(
+            summary = "Refresh access token",
+            description = "Issues a new access token using the refresh token stored in the refreshToken HTTP cookie."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Access token successfully refreshed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Missing, invalid, or expired refresh token"
+            )
+    })
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(
             @CookieValue(name = "refreshToken") String refreshToken,
@@ -2664,6 +4539,16 @@ public class AuthController {
         return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
     }
 
+    @Operation(
+            summary = "Log out",
+            description = "Revokes the current refresh token, if present, and clears the refresh token cookie."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Logout completed successfully"
+            )
+    })
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
@@ -2676,18 +4561,68 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Request password reset",
+            description = "Initiates the password reset process for the supplied email address."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Password reset request processed"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request"
+            )
+    })
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         passwordResetService.forgotPassword(request);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Reset password",
+            description = "Sets a new password using a valid password reset token."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Password successfully reset"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid or expired reset token"
+            )
+    })
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request);
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "List active sessions",
+            description = "Returns the active sessions belonging to the currently authenticated user." +
+                    "The current session is identified using the refreshToken cookie when available."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Sessions retrieved successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(
+                                    schema = @Schema(implementation = SessionResponse.class)
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/sessions")
     public List<SessionResponse> listSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -2696,6 +4631,25 @@ public class AuthController {
         return sessionService.listSessions(userDetails.getUser().getId(), refreshToken);
     }
 
+    @Operation(
+            summary = "Revoke a session",
+            description = "Revokes a specific session belonging to the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Session successfully revoked"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Session not found"
+            )
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/sessions/{sessionId}")
     public ResponseEntity<Void> revokeSession(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -2705,6 +4659,21 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Revoke other sessions",
+            description = "Revokes all sessions belonging to the authenticated user except the current session."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Other sessions successfully revoked"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/sessions/others")
     public ResponseEntity<Void> revokeOtherSessions(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -3190,9 +5159,16 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/ChangeStatu
 package com.minthanttun.usermanagementsystem.admin.dto;
 
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
 public record ChangeStatusRequest (
+
+        @Schema(
+                description = "New account status to assign to the user.",
+                example = "ACTIVE",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotNull(message = "Status is required")
         AccountStatus status
 ) {
@@ -3203,11 +5179,19 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/AdminUpdate
 ============================================================
 package com.minthanttun.usermanagementsystem.admin.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record AdminUpdateUserRequest (
+
+        @Schema(
+                description = "New username for the user. If provided, it must be between 3 and 50 characters and may contain only letters, numbers, and underscores.",
+                example = "username",
+                minLength = 3,
+                maxLength = 50
+        )
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         @Pattern(
                 regexp = "^[a-zA-Z0-9_]+$",
@@ -3215,10 +5199,20 @@ public record AdminUpdateUserRequest (
         )
         String username,
 
+        @Schema(
+                description = "New email address for the user.",
+                example = "user@example.com",
+                format = "email",
+                maxLength = 255
+        )
         @Email(message = "Email must be a valid email address")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
 
+        @Schema(
+                description = "New phone number for the user. May optionally start with + and must contain 7 to 15 digits.",
+                example = "+6591234567"
+        )
         @Pattern(
                 regexp = "^\\+?[0-9]{7,15}$",
                 message = "Phone number must be 7-15 digits, optionally starting with +"
@@ -3232,6 +5226,7 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/CreateAdmin
 ============================================================
 package com.minthanttun.usermanagementsystem.admin.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -3239,6 +5234,13 @@ import jakarta.validation.constraints.Size;
 
 public record CreateAdminRequest (
 
+        @Schema(
+                description = "Username for the new administrator account.",
+                example = "admin_user",
+                minLength = 3,
+                maxLength = 50,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Username is required")
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         @Pattern(
@@ -3247,11 +5249,23 @@ public record CreateAdminRequest (
         )
         String username,
 
+        @Schema(
+                description = "Email address for the new administrator account.",
+                example = "admin@example.com",
+                format = "email",
+                maxLength = 255,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Email is required")
         @Email(message = "Email must be a valid email address")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
 
+        @Schema(
+                description = "Phone number for the new administrator account.",
+                example = "+6591234567",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Phone number is required")
         @Pattern(
                 regexp = "^\\+?[0-9]{7,15}$",
@@ -3259,6 +5273,13 @@ public record CreateAdminRequest (
         )
         String phoneNumber,
 
+        @Schema(
+                description = "Password for the new administrator account. Must contain at least 8 characters, including at least one letter and one number.",
+                example = "adminPassword123",
+                minLength = 8,
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Password is required")
         @Size(min = 8, message = "Password must be at least 8 characters")
         @Pattern(
@@ -3275,9 +5296,16 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/admin/dto/ChangeRoleR
 package com.minthanttun.usermanagementsystem.admin.dto;
 
 import com.minthanttun.usermanagementsystem.user.Role;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
 public record ChangeRoleRequest (
+
+        @Schema(
+                description = "New role to assign to the user.",
+                example = "USER",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotNull(message = "Role is required")
         Role role
 ) {
@@ -3332,23 +5360,89 @@ package com.minthanttun.usermanagementsystem.admin.dto;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.Role;
 import com.minthanttun.usermanagementsystem.user.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record AdminUserResponse (
+
+        @Schema(
+                description = "Unique identifier of the user.",
+                example = "550e8400-e29b-41d4-a716-446655440000"
+        )
         UUID id,
+
+        @Schema(
+                description = "Unique username of the user",
+                example = "uniqueUsername"
+        )
         String username,
+
+        @Schema(
+                description = "Email address associated with the user account.",
+                example = "useremail@example.com"
+        )
         String email,
+
+        @Schema(
+                description = "Phone number associated with the user account."
+        )
         String phoneNumber,
+
+        @Schema(
+                description = "Role assigned to the user.",
+                example = "USER"
+        )
         Role role,
+
+        @Schema(
+                description = "Current account status.",
+                example = "ACTIVE"
+        )
         AccountStatus status,
+
+        @Schema(
+                description = "Indicates whether the user's email address has been verified.",
+                example = "true"
+        )
         boolean emailVerified,
+
+        @Schema(
+                description = "Number of consecutive failed login attempts",
+                example = "0"
+        )
         int failedLoginAttempts,
+
+        @Schema(
+                description = "Timestamp until which the account remains locked. Null when the account is not currently locked.",
+                example = "2026-09-08T20:30:00+08:00",
+                nullable = true
+        )
         OffsetDateTime lockedUntil,
+
+        @Schema(
+                description = "Indicates whether the user has completed all required profile information.",
+                example = "true"
+        )
         boolean profileComplete,
+
+        @Schema(
+                description = "URL of the user's profile image. Null when no profile image has been uploaded.",
+                example = "https://res.cloudinary.com/example/image/upload/profile-images/550e8400-e29b-41d4-a716-446655440000/avatar"
+        )
         String profileImageUrl,
+
+        @Schema(
+                description = "Timestamp when the user account was created.",
+                example = "2026-08-20T10:15:30+08:00"
+        )
         OffsetDateTime createdAt,
+
+        @Schema(
+                description = "Timestamp when the user account was created.",
+                example = "2026-08-20T10:15:30+08:00"
+        )
         OffsetDateTime updatedAt
 ) {
     public static AdminUserResponse from (User user) {
@@ -3395,6 +5489,7 @@ import com.minthanttun.usermanagementsystem.admin.dto.AuditLogResponse;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
 import com.minthanttun.usermanagementsystem.audit.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -3420,7 +5515,7 @@ public class AdminAuditLogController {
             @RequestParam(required = false) UUID actorUserId,
             @RequestParam(required = false) UUID targetUserId,
             @RequestParam(required = false) AuditAction action,
-            Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         Specification<com.minthanttun.usermanagementsystem.audit.AuditLog> spec = Specification.allOf(
                 AuditLogSpecifications.hasActor(actorUserId),
@@ -3471,6 +5566,7 @@ import com.minthanttun.usermanagementsystem.admin.dto.CreateAdminRequest;
 import com.minthanttun.usermanagementsystem.admin.dto.UserSearchCriteria;
 import com.minthanttun.usermanagementsystem.audit.AuditAction;
 import com.minthanttun.usermanagementsystem.audit.AuditService;
+import com.minthanttun.usermanagementsystem.auth.EmailVerificationService;
 import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
 import com.minthanttun.usermanagementsystem.common.exception.LastAdminException;
 import com.minthanttun.usermanagementsystem.common.exception.ResourceNotFoundException;
@@ -3501,6 +5597,7 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public Page<User> listUsers(UserSearchCriteria criteria, Pageable pageable) {
         Specification<User> spec = Specification.allOf(
@@ -3547,7 +5644,8 @@ public class AdminUserService {
             if (userRepository.existsByEmail(request.email())) {
                 throw new DuplicateResourceException("Email is already registered");
             }
-            user.setEmail(request.email());
+            user.setPendingEmail(request.email());
+            emailVerificationService.generateVerificationEmail(user, request.email());
         }
 
         if (request.phoneNumber() != null && !request.phoneNumber().equals(user.getPhoneNumber())) {
@@ -3674,6 +5772,7 @@ public class AdminUserService {
                 .phoneNumber(request.phoneNumber())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(Role.ADMIN)
+                .emailVerified(true)
                 .build();
 
         User saved = userRepository.save(newAdmin);
@@ -3744,8 +5843,16 @@ import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
 import com.minthanttun.usermanagementsystem.user.AccountStatus;
 import com.minthanttun.usermanagementsystem.user.User;
 import com.minthanttun.usermanagementsystem.user.Role;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -3759,31 +5866,129 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
+    @Operation(
+            summary = "List users",
+            description = "Retrieves a paginated list of users. Administrators can optionally filter users by search text, role and account status."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Users retrieved successfully"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required"
+            )
+    })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Page<AdminUserResponse> listUsers(
+            @Parameter(
+                    description = "Search text used to filter users."
+            )
             @RequestParam(required = false) String search,
+
+            @Parameter(
+                    description = "Filter users by role."
+            )
             @RequestParam(required = false) Role role,
+
+            @Parameter(
+                    description = "Filter users by account status."
+            )
             @RequestParam(required = false) AccountStatus status,
-            Pageable pageable
+            @ParameterObject Pageable pageable
     ) {
         UserSearchCriteria criteria = new UserSearchCriteria(search, role, status);
         return adminUserService.listUsers(criteria, pageable).map(AdminUserResponse::from);
     }
 
+    @Operation(
+            summary = "Get user by ID",
+            description = "Retrieves detailed information about a specific user. This endpoint is restricted to administrators."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User retrieved successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found"
+            )
+    })
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public AdminUserResponse getUsers(@PathVariable UUID id) {
+    public AdminUserResponse getUsers(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
+            @PathVariable UUID id
+    ) {
         return adminUserService.getCachedUserResponse(id);
     }
 
+    @Operation(
+            summary = "Update user",
+            description = "Updates an existing user's account information. This endpoint is restricted to administrators."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User successfully updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required."
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found"
+            )
+    })
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateUser(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody AdminUpdateUserRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
@@ -3792,9 +5997,44 @@ public class AdminUserController {
         return AdminUserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Update user account status",
+            description = "Changes the account status of an existing user. This endpoint is restricted to administrators."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User status successfully updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid account status"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found"
+            ),
+    })
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateStatus(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
@@ -3803,9 +6043,44 @@ public class AdminUserController {
         return AdminUserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Update user role",
+            description = "Changes the role assigned to an existing user. This endpoint is restricted to administrators."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User role successfully updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid role"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found"
+            )
+    })
     @PatchMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public AdminUserResponse updateRole(
+            @Parameter(
+                    description = "Unique identifier of the user.",
+                    required = true,
+                    example = "072d3f94-617f-40e3-ae7f-8144300c1fe2"
+            )
             @PathVariable UUID id,
             @Valid @RequestBody ChangeRoleRequest request,
             @AuthenticationPrincipal CustomUserDetails actor
@@ -3814,6 +6089,36 @@ public class AdminUserController {
         return AdminUserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Create an administrator",
+            description = "Creates a new administrator account. Only an authentication administrator can perform this operation."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Administrator successfully created",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AdminUserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid administrator data"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Administrator privileges are required"
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Username or email already exists"
+            ),
+    })
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AdminUserResponse> createAdmin(
@@ -3829,15 +6134,28 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/ChangePasswo
 ============================================================
 package com.minthanttun.usermanagementsystem.user.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record ChangePasswordRequest (
 
+        @Schema(
+                description = "User's current password. Required to verify the user's identity before changing the password.",
+                example = "CurrentPassword123",
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Current password is required")
         String currentPassword,
 
+        @Schema(
+                description = "New password for the user account. Must be at least 8 characters long and contain at least one letter and oen number.",
+                example = "NewPassword123",
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "New password is required")
         @Size(min = 8, message = "Password must be at least 8 characters")
         @Pattern(
@@ -3853,11 +6171,20 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/CompleteProf
 ============================================================
 package com.minthanttun.usermanagementsystem.user.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record CompleteProfileRequest (
+
+        @Schema(
+                description = "Username to assign to the user account when completing the profile. Must be between 3 and 50 characters and may contain only letters, numbers, and underscores.",
+                example = "userName123",
+                minLength = 3,
+                maxLength = 50,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Username is required")
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         @Pattern(
@@ -3866,10 +6193,15 @@ public record CompleteProfileRequest (
         )
         String username,
 
+        @Schema(
+                description = "Phone number to associate with the user account. May optionally start with + and must contain 7 to 15 digits.",
+                example = "+6591234567",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Phone number is required")
         @Pattern(
                 regexp = "^\\+?[0-9]{7,15}$",
-                message = "Phone number must be 7-15 digits, optionally staring with +"
+                message = "Phone number must be 7-15 digits, optionally starting with +"
         )
         String phoneNumber
 ) {
@@ -3882,16 +6214,56 @@ package com.minthanttun.usermanagementsystem.user.dto;
 
 import com.minthanttun.usermanagementsystem.user.Role;
 import com.minthanttun.usermanagementsystem.user.User;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.UUID;
 
 public record UserResponse(
+
+        @Schema(
+                description = "Unique identifier of the user account.",
+                example = "550e8400-e29b-41d4-a716-446655440000"
+        )
         UUID id,
+
+        @Schema(
+                description = "Unique username of the user.",
+                example = "uniqueUsername"
+        )
         String username,
+
+        @Schema(
+                description = "Current email address associated with the user account",
+                example = "emailaddress@example.com",
+                format = "email"
+        )
         String email,
+
+        @Schema(
+                description = "New email address awaiting verification. Null when there is no pending email change.",
+                example = "newemailaddress@example.com",
+                format = "email",
+                nullable = true
+        )
         String pendingEmail,
+
+        @Schema(
+                description = "Phone number associated with the user account.",
+                example = "+6591234567"
+        )
         String phoneNumber,
+
+        @Schema(
+                description = "Role assigned to the user account.",
+                example = "USER"
+        )
         Role role,
+
+        @Schema(
+                description = "URL of the user's profile image. Null when no profile image has been uploaded.",
+                example = "https://res.cloudinary.com/example/image/upload/profile-images/550e8400-e29b-41d4-a716-446655440000/avatar",
+                nullable = true
+        )
         String profileImageUrl
 ) {
     public static UserResponse from(User user) {
@@ -3906,12 +6278,19 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/UpdateProfil
 ============================================================
 package com.minthanttun.usermanagementsystem.user.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateProfileRequest (
 
+        @Schema(
+                description = "New username for the user account. If provided, it must be between 3 and 50 characters and may contain only letters, numbers, and underscores.",
+                example = "newUser",
+                minLength = 3,
+                maxLength = 50
+        )
         @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
         @Pattern(
                 regexp = "^[a-zA-Z0-9_]+$",
@@ -3919,10 +6298,20 @@ public record UpdateProfileRequest (
         )
         String username,
 
+        @Schema(
+                description = "New email address for the user account. If provided, it must be a valid email address and must not exceed 255 characters.",
+                example = "newemail@example.com",
+                format = "email",
+                maxLength = 255
+        )
         @Email(message = "Email must be a valid email address")
         @Size(max = 255, message = "Email must not exceed 255 characters")
         String email,
 
+        @Schema(
+                description = "New phone number for the user account. If provided, may optionally start with + and must contain 7 to 15 digits.",
+                example = "+6591234567"
+        )
         @Pattern(
                 regexp = "^\\+?[0-9]{7,15}$",
                 message = "Phone number must be 7-15 digits, optionally starting with +"
@@ -3936,12 +6325,20 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/dto/SetInitialPa
 ============================================================
 package com.minthanttun.usermanagementsystem.user.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record SetInitialPasswordRequest (
 
+        @Schema(
+                description = "Initial password to set for the user account. Must be at least 8 characters long and contain at least one letter and one number.",
+                example = "InitialPassword123",
+                minLength = 8,
+                format = "password",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "New password is required")
         @Size(min = 8, message = "Password must be at least 8 characters")
         @Pattern(
@@ -4087,8 +6484,8 @@ public class UserService {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "users", key = "#currentUser.id"),
-            @CacheEvict(value = "adminUsers", key = "#currentUser.id")
+            @CacheEvict(value = "users", key = "#user.id"),
+            @CacheEvict(value = "adminUsers", key = "#user.id")
     })
     public User updateProfile(User user, UpdateProfileRequest request) {
 
@@ -4331,12 +6728,14 @@ FILE: ./src/main/java/com/minthanttun/usermanagementsystem/user/UserController.j
 ============================================================
 package com.minthanttun.usermanagementsystem.user;
 
-import com.minthanttun.usermanagementsystem.common.exception.DuplicateResourceException;
-import com.minthanttun.usermanagementsystem.common.exception.ProfileIncompleteException;
 import com.minthanttun.usermanagementsystem.security.CustomUserDetails;
-import com.minthanttun.usermanagementsystem.security.session.GeoLocationService;
-import com.minthanttun.usermanagementsystem.security.session.UserAgentParsingService;
 import com.minthanttun.usermanagementsystem.user.dto.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -4347,29 +6746,56 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
-    private final ProfileImageService profileImageService;
 
-    private final GeoLocationService geoLocationService;
-    private final UserAgentParsingService userAgentParsingService;
-
-    @GetMapping("/geo")
-    public String testGeo(@RequestParam String ip) {
-        return geoLocationService.describeLocation(ip);
-    }
-
-    @GetMapping("/ua")
-    public String testUa(@RequestParam String userAgent) {
-        return userAgentParsingService.describeDevice(userAgent);
-    }
-
+    @Operation(
+            summary = "Get current user",
+            description = "Retrieves the profile of the currently authenticated user."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Current user retrieved successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
     @GetMapping("/me")
     public UserResponse getCurrentUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return userService.getCachedProfile(userDetails.getUser().getId());
     }
 
+    @Operation(
+            summary = "Update current user profile",
+            description = "Updates editable profile information for the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile successfully updated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid profile data"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
     @PatchMapping("/me")
     public UserResponse updateProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -4379,6 +6805,24 @@ public class UserController {
         return UserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Change password",
+            description = "Changes the password of the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Password successfully changed"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid password request"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required or the current password is incorrect"
+            )
+    })
     @PutMapping("/me/password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -4388,7 +6832,25 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    //singup with oauth, dont have local password
+    @Operation(
+            summary = "Set initial password",
+            description = "Sets an initial local password for an authenticated user who does not currently have a local password, such as a user who registered through OAuth."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Initial password successfully set"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid password request or user already has a password"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
+    // signup with oauth, don't have local password
     @PutMapping("/me/password/initial")
     public ResponseEntity<Void> setInitialPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -4398,6 +6860,28 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Upload profile photo",
+            description = "Uploads or replaces the profile photo of the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile photo successfully uploaded",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid or unsupported image file"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
     @PutMapping("/me/photo")
     public UserResponse uploadProfilePhoto(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -4407,12 +6891,52 @@ public class UserController {
         return UserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Delete profile photo",
+            description = "Removes the profile photo of the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile photo successfully deleted",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
     @DeleteMapping("/me/photo")
     public UserResponse deleteProfilePhoto(@AuthenticationPrincipal CustomUserDetails userDetails) {
         User updated = userService.deleteProfilePhoto(userDetails.getUser());
         return UserResponse.from(updated);
     }
 
+    @Operation(
+            summary = "Complete user profile",
+            description = "Completes or updates the required profile information for the currently authenticated user."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile successfully completed",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid profile data"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication is required"
+            )
+    })
     @PostMapping("/me/complete-profile")
     public UserResponse completeProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -4524,10 +7048,11 @@ package com.minthanttun.usermanagementsystem.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -4602,6 +7127,40 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleRefreshTokenReuse(RefreshTokenReuseException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
         problem.setTitle("Session Compromised");
+        return problem;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Request body contains invalid or unrecognized fields"
+                );
+
+        problem.setTitle("Malformed Request");
+
+        return problem;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage()
+        );
+
+        problem.setTitle("Invalid Request");
+        return problem;
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ProblemDetail handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "File exceeds maximum upload size"
+        );
+
+        problem.setTitle("File Too Large");
         return problem;
     }
 }
