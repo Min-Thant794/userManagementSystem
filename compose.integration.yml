@@ -1,0 +1,27 @@
+name: usermanagement-integration
+services:
+  postgres:
+    image: postgres:18.3
+    environment:
+      POSTGRES_DB: usermanagement_it
+      POSTGRES_USER: ums_it
+      POSTGRES_PASSWORD: integration_only
+    ports:
+      - "127.0.0.1:15432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ums_it -d usermanagement_it"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
