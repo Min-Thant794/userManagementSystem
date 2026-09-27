@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +34,9 @@ public class AuthController {
     private final CookieUtil cookieUtil;
     private final EmailVerificationService emailVerificationService;
     private final SessionService sessionService;
+
+    @Value("${app.jwt.access-token-expiry-ms}")
+    private long accessTokenExpiryMs;
 
     @Operation(
             summary = "Register a new user",
@@ -135,7 +139,9 @@ public class AuthController {
             HttpServletResponse response) {
         var tokens = authService.login(request, httpRequest);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
-        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
+        return ResponseEntity.ok(
+                AuthResponse.of(tokens.accessToken(), accessTokenExpiryMs)
+        );
     }
 
     @Operation(
@@ -164,7 +170,9 @@ public class AuthController {
     ) {
         var tokens = authService.refresh(refreshToken, httpRequest);
         cookieUtil.setRefreshTokenCookie(response, tokens.refreshToken(), tokens.refreshTokenExpiryMs());
-        return ResponseEntity.ok(AuthResponse.of(tokens.accessToken(), tokens.refreshTokenExpiryMs()));
+        return ResponseEntity.ok(
+                AuthResponse.of(tokens.accessToken(), accessTokenExpiryMs)
+        );
     }
 
     @Operation(

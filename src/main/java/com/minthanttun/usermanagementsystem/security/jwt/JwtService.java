@@ -43,6 +43,7 @@ public class JwtService {
         Date expiry = new Date(now.getTime() + expiryMs);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(user.getId().toString())
                 .claim("username", user.getUsername())
                 .claim("role", user.getRole().name())

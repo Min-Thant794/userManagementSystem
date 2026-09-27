@@ -99,7 +99,7 @@ public class AuthService {
         return tokenIssuer.issueNewSession(user, httpRequest);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = RefreshTokenReuseException.class)
     public TokenIssuer.IssuedTokens refresh(String rawRefreshToken, HttpServletRequest httpRequest) {
         String hash = tokenHasher.hash(rawRefreshToken);
 
