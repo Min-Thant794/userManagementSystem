@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 //This tests the real persistance/services/cahce stack, not the HTTP application context.
 
 @Configuration(proxyBeanMethods = false)
+@Profile("integration")
 @EnableAutoConfiguration
 @EntityScan("com.minthanttun.usermanagementsystem")
 @EnableJpaRepositories("com.minthanttun.usermanagementsystem")

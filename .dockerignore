@@ -1,0 +1,13 @@
+# Allow only files needed to compile the application.
+# In particular, .env, .git, target, test data and load-test results stay out.
+**
+!Dockerfile
+!.dockerignore
+!pom.xml
+!mvnw
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.properties
+!src/
+!src/main/
+!src/main/**

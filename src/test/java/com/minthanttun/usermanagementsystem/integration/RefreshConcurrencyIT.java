@@ -58,34 +58,59 @@ class RefreshConcurrencyIT extends IntegrationSupport {
         var family=UUID.randomUUID();
         refresh(user("race"),"original",family,false,future());
 
-        var barrier=new CyclicBarrier(2);
-        // The spy only coordinates timing. The underlying lookup and update still use PostgreSQL.
-        doAnswer(invocation -> {
-            Object found=invocation.callRealMethod(); await(barrier); return found;
-        }).when(refreshTokenRepository).findByTokenHash(tokenHasher.hash("original"));
-
-        var executor=Executors.newFixedThreadPool(2);
+        var barrier = new CyclicBarrier(2);
+        var hash = tokenHasher.hash("original");
+        var executor = Executors.newFixedThreadPool(2);
 
         try {
-            Callable<Object> task=() -> {
+            Callable<Object> task = () -> tx().execute(status -> {
+                // Each worker starts a separate real database transaction.
+                var original = refreshTokenRepository
+                        .findByTokenHash(hash)
+                        .orElseThrow();
+
+                assertThat(original.isRevoked()).isFalse();
+
+                // Both workers read before either starts rotation.
+                await(barrier);
+
                 try {
-                    return authService.refresh("original",new MockHttpServletRequest());
-                }
-                catch(RefreshTokenReuseException expected) {
+                    return authService.refresh(
+                            "original",
+                            new MockHttpServletRequest()
+                    );
+                } catch (RefreshTokenReuseException expected) {
+                    // noRollbackFor allows family revocation to commit.
                     return expected;
                 }
-            };
+            });
 
-            var one=executor.submit(task); var two=executor.submit(task);
-            var results=List.of(one.get(20,TimeUnit.SECONDS),two.get(20,TimeUnit.SECONDS));
+            var first = executor.submit(task);
+            var second = executor.submit(task);
 
-            assertThat(results.stream().filter(TokenIssuer.IssuedTokens.class::isInstance).count()).isEqualTo(1);
-            assertThat(results.stream().filter(RefreshTokenReuseException.class::isInstance).count()).isEqualTo(1);
+            // Futures finish after their transactions commit.
+            var results = List.of(
+                    first.get(20, TimeUnit.SECONDS),
+                    second.get(20, TimeUnit.SECONDS)
+            );
 
-            var rows=refreshTokenRepository.findAll();
+            assertThat(results.stream()
+                    .filter(TokenIssuer.IssuedTokens.class::isInstance)
+                    .count())
+                    .isEqualTo(1);
 
-            assertThat(rows).hasSize(2); // Original plus exactly one replacement.
-            assertThat(rows).allMatch(t -> family.equals(t.getFamilyId()));
+            assertThat(results.stream()
+                    .filter(RefreshTokenReuseException.class::isInstance)
+                    .count())
+                    .isEqualTo(1);
+
+            var rows = refreshTokenRepository.findAll();
+
+            // Original token plus exactly one replacement.
+            assertThat(rows).hasSize(2);
+            assertThat(rows).allMatch(token ->
+                    family.equals(token.getFamilyId())
+            );
             assertThat(rows).allMatch(RefreshToken::isRevoked);
         } finally {
             executor.shutdownNow(); executor.awaitTermination(5,TimeUnit.SECONDS);

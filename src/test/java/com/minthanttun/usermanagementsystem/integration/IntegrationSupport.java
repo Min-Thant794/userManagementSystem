@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -18,7 +19,9 @@ import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(classes = IntegrationTestConfig.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        properties = "spring.config.location=classpath:application-integration.properties")
+        properties = "spring.config.location=classpath:application-integration.properties"
+)
+@ActiveProfiles("integration")
 @Tag("integration")
 // Deliberately NO @Transactional: assertions must see committed service transactions.
 public abstract class IntegrationSupport {
