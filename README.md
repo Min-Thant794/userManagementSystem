@@ -1,4 +1,4 @@
-User Management System API
+# User Management System API
 
 **Java 21 · Spring Boot 3.5.4 · Spring Security · PostgreSQL · Redis**
 
