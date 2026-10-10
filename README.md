@@ -1,472 +1,505 @@
-# User Management System
+User Management System API
 
-This is my **User Management System backend** project built with **Java and Spring Boot**.
+**Java 21 · Spring Boot 3.5.4 · Spring Security · PostgreSQL · Redis**
 
-I am currently learning Java Spring Boot by building projects myself and using Claude as a learning assistant. This project is mainly for learning how a real backend application works, especially authentication, authorization, database relationships, security, and REST APIs.
+A REST API for user authentication, account management, session management, and administrator operations, built with **Java and Spring Boot**.
 
-It is not meant to be a perfect production-ready application. I am building it step by step and learning from the problems I run into along the way.
+The application includes JWT authentication with refresh-token rotation, Google OAuth2 / OpenID Connect login, email verification, password recovery, profile images, role-based authorization, audit logging, caching, and rate limiting. It also includes OpenAPI documentation, automated test suites, and Docker Compose configurations for development and testing.
 
-## What I am learning from this project
+**Project status:** Core backend implementation completed as a personal learning and portfolio project.
 
-Some of the main things I am practicing in this project are:
+## Why I Built This
 
-* Java
-* Spring Boot
-* Spring MVC / REST API
-* Spring Data JPA
-* Spring Security
-* JWT authentication
-* Refresh tokens
-* OAuth2 / Google Login
-* PostgreSQL
-* Flyway database migrations
-* Password hashing with Argon2
-* Email verification
-* Password reset
-* Role-based authorization
-* Rate limiting
-* Audit logs
-* Validation and exception handling
-* Maven
-* Git and GitHub
+I started backend development with **Node.js and Express**, alongside React-based full-stack projects. That experience helped me discover that my main interest is building backend APIs and understanding how business logic, data, security, and application architecture work together.
 
-## Main Features
+I built this project while moving to **Java and Spring Boot**, with the goal of developing the skills needed to build maintainable backend APIs for enterprise applications. It gave me practical experience beyond basic CRUD: managing account lifecycles, rotating tokens, controlling access, working with database transactions, and testing behavior across multiple application layers.
 
-### User Authentication
+## Contents
 
-Users can:
+- [Implemented Features](#implemented-features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [API Documentation](#api-documentation)
+- [API Endpoints](#api-endpoints)
+- [Request and Response Examples](#request-and-response-examples)
+- [Authentication and Security Behavior](#authentication-and-security-behavior)
+- [Database and Caching](#database-and-caching)
+- [Testing](#testing)
+- [What I Learned](#what-i-learned)
 
-* Sign up
-* Log in using username or email
-* Log out
-* Refresh their access token
-* Reset their password
-* Verify their email
-* Change their password
-* Complete their profile
+## Implemented Features
 
-The authentication system uses **JWT access tokens** and **refresh tokens**. The refresh token is stored in an HTTP-only cookie. Access tokens expire after 15 minutes and refresh tokens expire after 7 days in the current configuration.
+### Authentication and Account Lifecycle
 
-### Email Verification
+- Register with a username, email address, phone number, and password.
+- Log in with either a username or an email address.
+- Verify an email address and request another verification email.
+- Request a password-reset email and reset a password using a time-limited token.
+- Change an existing password or set an initial password for an OAuth account.
+- Issue JWT access and refresh tokens, with refresh tokens delivered through an HTTP-only cookie.
+- Rotate refresh tokens and detect reuse of a previously consumed token.
+- Temporarily lock accounts after repeated failed login attempts.
 
-When a new user signs up, an email verification process is started.
+### Google Login and Profile Management
 
-Verification tokens are stored as hashes in the database and expire after 24 hours.
+- Sign in through Google OAuth2 / OpenID Connect.
+- Link a Google identity to an existing account or create a new account.
+- Complete the username and phone information required for an OAuth user's profile.
+- View and update the current user's profile.
+- Hold email changes in `pendingEmail` until the new address is verified.
+- Upload, replace, and delete profile photos through Cloudinary.
 
-### Password Reset
+Profile-image validation supports **JPEG, PNG, and WebP**, with a maximum file size of **5 MiB** and dimensions between **50 × 50** and **4000 × 4000** pixels. Cloudinary transforms uploaded images into **300 × 300 JPEG** avatars. The multipart file and request limits are both configured to `5MB`, so multipart overhead also counts toward the request limit.
 
-Users can request a password reset through their email.
+### Session Management
 
-The password reset token has a limited lifetime and is stored hashed in the database rather than storing the raw token.
+- List active refresh-token sessions.
+- Display device information, approximate location, creation time, and last-used time.
+- Identify the current session using the refresh-token cookie.
+- Revoke an individual session or all other sessions.
+- Revoke refresh sessions after a password change, password reset, or confirmed email change.
 
-### Google OAuth2 Login
+### Administrator Operations
 
-The project also supports Google OAuth2/OIDC login.
+- List, search, paginate, and filter users by role and account status.
+- View and update individual users.
+- Suspend or reactivate accounts.
+- Change user roles and create additional administrators.
+- Prevent the last active administrator from being demoted or suspended.
+- Retrieve paginated audit logs and filter by actor, target user, and action.
 
-When a user logs in with Google, the application can find an existing linked account or create/link a user account. Google accounts with verified email addresses are accepted by the application.
+### Supporting Backend Capabilities
 
-### User Profile
+- Redis caching for user and admin profile responses.
+- Flyway migrations for database schema changes.
+- Jakarta Bean Validation for request DTOs.
+- Centralized exception handling with Spring `ProblemDetail` responses.
+- Bucket4j endpoint limits and an application-instance request limit.
+- OpenAPI / Swagger documentation with bearer-token authentication support.
+- Scheduled cleanup of expired, used, or revoked token records.
+- Unit, database/Redis integration, HTTP integration, end-to-end, and application-context tests.
 
-Authenticated users can:
+## Technology Stack
 
-* View their own profile
-* Update their profile
-* Change their password
-* Set an initial password for OAuth accounts
-* Complete their profile
+| Area | Technologies |
+| --- | --- |
+| Language and framework | Java 21, Spring Boot 3.5.4, Spring Web / MVC |
+| Security | Spring Security, OAuth2 Client, JJWT 0.12.6, Argon2 |
+| Persistence | Spring Data JPA, PostgreSQL, Flyway |
+| Caching | Spring Data Redis, Spring Cache |
+| Request handling | Jakarta Bean Validation, Spring `ProblemDetail` |
+| Rate limiting | Bucket4j 8.19.0 |
+| Email | Spring Mail / JavaMailSender, Gmail SMTP |
+| Profile images | Cloudinary, ImageIO, TwelveMonkeys WebP support |
+| Session metadata | UA Parser, IP-based location lookup |
+| API documentation | springdoc-openapi 2.8.13, Swagger UI |
+| Testing | JUnit Jupiter, Mockito, AssertJ, Spring Boot Test, Spring Security Test, MockMvc |
+| Development | Maven, Lombok, spring-dotenv, Docker Compose, Mailpit |
 
-These endpoints are under `/api/users`.
-
-### Admin Features
-
-Admins can manage users.
-
-Current admin functionality includes:
-
-* View users
-* Search users
-* Filter users by role
-* Filter users by status
-* View a specific user
-* Update a user
-* Suspend/reactivate accounts
-* Change user roles
-* Create another admin
-* View audit logs
-
-The admin API is protected using `@PreAuthorize("hasRole('ADMIN')")`.
-
-There is also a rule that prevents the last remaining active admin from being demoted or suspended.
-
-### Login Attempt Lockout
-
-The project keeps track of failed login attempts.
-
-After **5 failed login attempts**, the account is temporarily locked for **15 minutes**.
-
-### Rate Limiting
-
-I added rate limiting using **Bucket4j**.
-
-There are different limits for different endpoints. For example:
-
-* Login: 5 requests/minute per IP
-* Signup: 5 requests/minute per IP
-* Forgot password: 5 requests/minute per IP
-* Reset password: 5 requests/minute per IP
-* Refresh token: 20 requests/minute per user
-* User endpoints: 100 requests/minute per user
-* Admin endpoints: 100 requests/minute per user
-
-There is also a global limit of 1000 requests per minute.
-
-## Technologies
-
-| Technology               | Purpose                          |
-| ------------------------ | -------------------------------- |
-| Java 21                  | Programming language             |
-| Spring Boot 3.5.4        | Backend framework                |
-| Spring Web               | REST APIs                        |
-| Spring Data JPA          | Database access                  |
-| Spring Security          | Authentication and authorization |
-| JWT                      | Access and refresh tokens        |
-| OAuth2 Client            | Google login                     |
-| PostgreSQL               | Database                         |
-| Flyway                   | Database migrations              |
-| Argon2                   | Password hashing                 |
-| Bucket4j                 | Rate limiting                    |
-| JavaMailSender           | Email                            |
-| Lombok                   | Reduce boilerplate code          |
-| Maven                    | Build and dependency management  |
-| JUnit / Spring Boot Test | Testing                          |
-
-The main dependencies and versions can be found in `pom.xml`.
+Dependency declarations are maintained in [`pom.xml`](pom.xml).
 
 ## Project Structure
 
-The project is organised into different packages based on the feature or responsibility.
-
 ```text
 src/
-└── main/
-    ├── java/
-    │   └── com/minthanttun/usermanagementsystem/
-    │       ├── admin/
-    │       ├── auth/
-    │       ├── audit/
-    │       ├── common/
-    │       ├── config/
-    │       ├── security/
-    │       │   ├── jwt/
-    │       │   ├── oauth2/
-    │       │   └── ratelimit/
-    │       └── user/
-    │
-    └── resources/
-        ├── db/
-        │   └── migration/
-        └── application.properties
+├── main/
+│   ├── java/com/minthanttun/usermanagementsystem/
+│   │   ├── admin/          # Admin operations, search, and audit-log endpoints
+│   │   ├── auth/           # Authentication, verification, recovery, and sessions
+│   │   ├── audit/          # Audit records and persistence
+│   │   ├── common/         # Exception handling and token cleanup
+│   │   ├── config/         # Security, caching, rate limits, storage, and OpenAPI
+│   │   ├── security/
+│   │   │   ├── jwt/
+│   │   │   ├── oauth2/
+│   │   │   ├── ratelimit/
+│   │   │   └── session/
+│   │   └── user/           # Profiles, passwords, and profile images
+│   └── resources/
+│       ├── db/migration/
+│       ├── application.properties
+│       └── application-docker.properties
+└── test/
+    ├── java/com/minthanttun/usermanagementsystem/
+    │   ├── ...             # Unit tests grouped alongside feature packages
+    │   ├── integration/
+    │   ├── httpIntegration/
+    │   └── e2e/
+    └── resources/          # Separate smoke, integration, HTTP, and E2E settings
 ```
 
-I am trying to keep authentication, users, admin functions, security, and common functionality separated instead of putting everything into one package.
+Controllers handle HTTP requests and validated DTOs, services implement business operations, and repositories provide database access. Security filters process bearer authentication and rate limits before requests reach protected endpoints.
 
-## API Endpoints
+## Getting Started
 
-### Authentication
+### 1. Prerequisites
 
-Base URL:
+- **Java 21** for running the application locally.
+- **Maven**, or the repository's Maven wrapper. The wrapper configuration targets Maven 3.9.16.
+- **Docker with Docker Compose** for the provided PostgreSQL and Redis environments.
+- Google OAuth credentials, Gmail SMTP credentials, and a Cloudinary account for their corresponding integrations. The default application configuration references these values at startup.
 
-```text
-/api/auth
-```
-
-| Method | Endpoint           | Description            |
-| ------ | ------------------ | ---------------------- |
-| POST   | `/signup`          | Create a new user      |
-| POST   | `/login`           | Login                  |
-| POST   | `/refresh`         | Get a new access token |
-| POST   | `/logout`          | Logout                 |
-| POST   | `/forgot-password` | Request password reset |
-| POST   | `/reset-password`  | Reset password         |
-
-These endpoints are defined in `AuthController`.
-
-### User
-
-Base URL:
-
-```text
-/api/users
-```
-
-| Method | Endpoint               | Description          |
-| ------ | ---------------------- | -------------------- |
-| GET    | `/me`                  | Get current user     |
-| PATCH  | `/me`                  | Update profile       |
-| PUT    | `/me/password`         | Change password      |
-| PUT    | `/me/password/initial` | Set initial password |
-| POST   | `/me/complete-profile` | Complete profile     |
-
-### Admin
-
-Base URL:
-
-```text
-/api/admin/users
-```
-
-| Method | Endpoint       | Description           |
-| ------ | -------------- | --------------------- |
-| GET    | `/`            | List/search users     |
-| GET    | `/{id}`        | Get a user            |
-| PUT    | `/{id}`        | Update a user         |
-| PATCH  | `/{id}/status` | Change account status |
-| PATCH  | `/{id}/role`   | Change user role      |
-| POST   | `/`            | Create an admin       |
-
-All of these admin endpoints require the `ADMIN` role.
-
-### Admin Audit Logs
-
-```text
-GET /api/admin/audit-logs
-```
-
-Audit logs can be filtered by actor, target user, and action, and the endpoint is restricted to admins.
-
-## Authentication Flow
-
-The basic authentication flow currently looks like this:
-
-```text
-User
-  │
-  ├── Sign Up
-  │      │
-  │      ├── Validate input
-  │      ├── Check duplicate username/email/phone
-  │      ├── Hash password with Argon2
-  │      ├── Save user
-  │      └── Send verification email
-  │
-  └── Login
-         │
-         ├── Check email verification
-         ├── Check account status
-         ├── Check login attempts / lockout
-         ├── Verify password
-         ├── Create access token
-         └── Create refresh token
-```
-
-The access token contains information such as the user ID, username, role, and token type.
-
-## Security
-
-Spring Security is configured to use stateless authentication.
-
-The application:
-
-* Uses JWT authentication
-* Disables CSRF for the API
-* Uses an HTTP-only refresh-token cookie
-* Uses Argon2 for password hashing
-* Uses role-based authorization
-* Supports Google OAuth2 login
-* Checks suspended/locked accounts
-* Uses rate limiting
-
-Authenticated requests use the JWT filter before the normal Spring Security username/password filter.
-
-The password encoder is configured with Argon2.
-
-## Database
-
-The project uses **PostgreSQL**.
-
-The database currently contains tables for:
-
-* Users
-* OAuth accounts
-* Refresh tokens
-* Password reset tokens
-* Email verification tokens
-* Audit logs
-
-The user table contains information such as username, email, phone number, password hash, role, account status, email verification status, failed login attempts, and lockout time.
-
-Flyway is used to manage database migrations. The migration files are located in:
-
-```text
-src/main/resources/db/migration/
-```
-
-Some of the current migrations include:
-
-```text
-V1__init.sql
-V2__seed_first_admin.sql
-V3__add_login_lockout.sql
-V4__add_password_reset_tokens.sql
-V5__add_email_verification.sql
-```
-
-## Requirements
-
-Before running the project, you need:
-
-* Java 21
-* Maven
-* PostgreSQL
-* A PostgreSQL database
-* Google OAuth credentials if you want Google login
-* Gmail SMTP credentials if you want email features
-
-## Database Setup
-
-Create a PostgreSQL database:
-
-```sql
-CREATE DATABASE user_management_system;
-```
-
-The application is currently configured to connect to:
-
-```text
-jdbc:postgresql://localhost:5432/user_management_system
-```
-
-Flyway will handle the database migrations when the application starts.
-
-## Environment Variables
-
-I am using environment variables for values that should not be hard-coded in the application.
-
-Create your environment configuration with values for:
-
-```text
-DB_USERNAME=
-DB_PASSWORD=
-JWT_SECRET=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GMAIL_USERNAME=
-GMAIL_APP_PASSWORD=
-```
-
-The application reads these values from the Spring configuration.
-
-**Do not commit your real secrets or passwords to GitHub.**
-
-## Running the Project
-
-Clone the repository:
+### 2. Clone the Repository
 
 ```bash
 git clone https://github.com/Min-Thant794/userManagementSystem.git
+cd userManagementSystem
 ```
 
-Go into the project:
+### 3. Configure Local Environment Values
+
+Create a `.env` file in the project root. The project declares `spring-dotenv`, and Docker Compose also reads the root `.env` file for variable substitution.
+
+```dotenv
+POSTGRES_DB=user_management_system
+POSTGRES_USER=ums_local
+POSTGRES_PASSWORD=replace-with-your-local-database-password
+DOCKER_REDIS_PASSWORD=replace-with-your-local-redis-password
+JWT_SECRET=replace-with-a-random-signing-secret
+GOOGLE_CLIENT_ID=replace-with-your-google-client-id
+GOOGLE_CLIENT_SECRET=replace-with-your-google-client-secret
+GMAIL_USERNAME=replace-with-your-gmail-address
+GMAIL_APP_PASSWORD=replace-with-your-gmail-app-password
+CLOUDINARY_CLOUD_NAME=replace-with-your-cloud-name
+CLOUDINARY_API_KEY=replace-with-your-cloudinary-api-key
+CLOUDINARY_API_SECRET=replace-with-your-cloudinary-api-secret
+```
+
+Replace all placeholder values before starting. For `JWT_SECRET`, use a random HMAC signing key of at least 32 bytes; for example, generate a value with `openssl rand -hex 32`. The application uses the configured string's bytes as its signing key.
+
+Keep the populated `.env` file out of version control. Environment variables supplied through your shell or IDE run configuration can also provide these settings.
+
+### 4. Start PostgreSQL and Redis
 
 ```bash
-cd usermanagementsystem
+docker compose -f docker-compose.yml up -d --wait
 ```
 
-Then run:
+The default Compose services create the configured PostgreSQL database and start Redis. PostgreSQL and Redis use named volumes to retain development data.
+
+| Dependency | Application running on your computer | Application running inside Compose |
+| --- | --- | --- |
+| PostgreSQL | `localhost:5433` | `postgres:5432` |
+| Redis | `localhost:6379` | `redis:6379` |
+
+The local JDBC URL is `jdbc:postgresql://localhost:5433/${POSTGRES_DB}`. Flyway applies migrations during application startup, and Hibernate validates the resulting schema.
+
+### 5. Run the Application
+
+**macOS / Linux**
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-On Windows:
+**Windows PowerShell**
 
-```bash
-mvnw.cmd spring-boot:run
+```powershell
+.\mvnw.cmd spring-boot:run
 ```
 
-You can also run the project directly from IntelliJ IDEA or another Java IDE.
+If you use an installed Maven distribution, replace `./mvnw` with `mvn`. The application can also be launched from a Java IDE with the same environment settings.
 
-## Testing
+The default local base URL is **`http://localhost:8080`**.
 
-There is currently a basic Spring Boot test for checking whether the application context loads.
+### Optional: Run the Application in Docker
 
-```java
-@SpringBootTest
-class UsermanagementsystemApplicationTests {
+The development Compose file defines an optional `app` service using the Spring `docker` profile. This build expects a `Dockerfile` at the repository root.
 
-    @Test
-    void contextLoads() {
-    }
+```bash
+docker compose -f docker-compose.yml --profile app up --build -d --wait
+```
+
+Use this when the root Dockerfile is available in your checkout. Stop any locally running application using port 8080 before starting the application container.
+
+The app's health check expects an unauthenticated request to `/api/users/me` to return **401**. It checks HTTP/security availability; it does not continuously verify database or cache health.
+
+### Frontend and External-Service Settings
+
+The backend currently uses these local frontend URLs:
+
+| Setting | Default |
+| --- | --- |
+| Allowed CORS origin | `http://localhost:5173` |
+| Email-verification page | `http://localhost:5173/verify-email` |
+| Password-reset page | `http://localhost:5173/reset-password` |
+| Google-login frontend redirect | `http://localhost:5173/oauth2/callback` |
+
+These are client integration targets; the backend does not serve those frontend pages. Update the corresponding `app.*` properties when using another frontend.
+
+For local Google login, configure the Google OAuth client with the callback URL `http://localhost:8080/login/oauth2/code/google`. Browser clients making cookie-based refresh or logout requests must include credentials.
+
+## API Documentation
+
+The application includes controller and DTO OpenAPI annotations and a `bearerAuth` security scheme.
+
+After startup:
+
+- **Swagger UI:** [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- **OpenAPI JSON:** [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+Use Swagger UI's **Authorize** control to supply an access token for protected endpoints. Refresh operations also require the `refreshToken` cookie; a bearer token alone does not replace it.
+
+## API Endpoints
+
+Paths below are relative to the application base URL. Protected endpoints require `Authorization: Bearer <access-token>`. Admin endpoints additionally require the `ADMIN` role.
+
+### Authentication and Verification
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/signup` | Register a user; returns `201` and a user response |
+| `POST` | `/api/auth/verify-email` | Verify an email token; returns `204` |
+| `POST` | `/api/auth/resend-verification` | Request another verification email; returns `204` |
+| `POST` | `/api/auth/login` | Log in and receive an access token plus refresh cookie |
+| `POST` | `/api/auth/refresh` | Rotate the refresh token and issue a new access token |
+| `POST` | `/api/auth/logout` | Revoke the supplied refresh token and clear its cookie; returns `204` |
+| `POST` | `/api/auth/forgot-password` | Request a password-reset email; returns `204` |
+| `POST` | `/api/auth/reset-password` | Reset a password using a reset token; returns `204` |
+
+These routes do not require a bearer token. `/refresh` requires the refresh-token cookie. Google sign-in starts at `/oauth2/authorization/google`.
+
+### Sessions
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/auth/sessions` | List active sessions and identify the current session when its cookie is supplied |
+| `DELETE` | `/api/auth/sessions/{sessionId}` | Revoke an owned session; returns `204` |
+| `DELETE` | `/api/auth/sessions/others` | Revoke other sessions; returns `204` |
+
+All session endpoints require bearer authentication. Send the refresh cookie to preserve the current session when revoking other sessions. **Without that cookie, `/sessions/others` revokes all refresh sessions for the authenticated user.**
+
+### Current User
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/users/me` | Read the current user's cached profile |
+| `PATCH` | `/api/users/me` | Update profile details |
+| `PUT` | `/api/users/me/password` | Change the password; returns `204` |
+| `PUT` | `/api/users/me/password/initial` | Set an initial local password for an OAuth account; returns `204` |
+| `PUT` | `/api/users/me/photo` | Upload a photo using the multipart field `file` |
+| `DELETE` | `/api/users/me/photo` | Delete the profile photo |
+| `POST` | `/api/users/me/complete-profile` | Supply the username and phone number for an incomplete profile |
+
+### Administration
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/admin/users` | List/search users with role, status, and pagination filters |
+| `GET` | `/api/admin/users/{id}` | Retrieve a cached admin view of a user |
+| `PUT` | `/api/admin/users/{id}` | Update user details |
+| `PATCH` | `/api/admin/users/{id}/status` | Change account status |
+| `PATCH` | `/api/admin/users/{id}/role` | Change a user's role |
+| `POST` | `/api/admin/users` | Create another administrator; returns `201` |
+| `GET` | `/api/admin/audit-logs` | Retrieve and filter audit logs |
+
+User-list filters are `search`, `role`, and `status`. Audit-log filters are `actorUserId`, `targetUserId`, and `action`. Both list endpoints accept Spring pagination parameters such as `page`, `size`, and `sort`.
+
+## Request and Response Examples
+
+The values below are illustrative. Use an email address you control to complete verification.
+
+### Register
+
+`POST /api/auth/signup`
+
+```json
+{
+  "username": "demo_user",
+  "email": "demo@example.com",
+  "phoneNumber": "+6591234567",
+  "password": "ExamplePassword123"
 }
 ```
 
-I plan to add more tests as I continue learning, especially for authentication, user services, and admin functionality.
+Registration returns `201 Created` with a `UserResponse`. It starts email verification and does not issue login tokens. Submit the received verification token to `/api/auth/verify-email` in a JSON body containing `token` before logging in.
 
-## What I want to improve next
+### Log In
 
-This project is still a learning project, so there are things I want to improve as I learn more Spring Boot.
+`POST /api/auth/login`
 
-Some things I want to work on next:
+```json
+{
+  "identifier": "demo_user",
+  "password": "ExamplePassword123"
+}
+```
 
-* Add more unit tests
-* Add more integration tests
-* Improve API documentation
-* Improve exception handling
-* Improve validation
-* Learn more about Spring Security internals
-* Improve database design where necessary
-* Add a frontend later
-* Improve logging
-* Learn more about Docker and deployment
-* Deploy the backend
-* Clean up parts of the code as I understand Spring better
+`identifier` accepts either the username or email address. A successful response has this shape:
 
-## Things I learned while building this
+```json
+{
+  "accessToken": "<access-token>",
+  "tokenType": "Bearer",
+  "expiresIn": 900
+}
+```
 
-This project started as a simple user management idea, but it became much more complicated once I started adding authentication and security.
+The refresh token is sent separately in a `Set-Cookie` header. `expiresIn` is measured in seconds.
 
-Some of the things I learned while working on it:
+### Access a Protected Endpoint
 
-* How Spring Boot applications are structured
-* How controllers, services and repositories work together
-* How JPA maps Java classes to database tables
-* How Spring Security handles authentication
-* How JWT authentication works
-* Why access tokens and refresh tokens are different
-* How password hashing works
-* How OAuth2 login works
-* How database migrations work with Flyway
-* How filters work in Spring Security
-* How rate limiting can be implemented
-* Why validation should happen before business logic
-* Why secrets should not be stored directly in source code
+```http
+GET /api/users/me
+Authorization: Bearer <access-token>
+```
 
-A lot of this project was built by trying things, breaking things, debugging them, and then understanding why they worked or didn't work.
+Profile responses contain `id`, `username`, `email`, `pendingEmail`, `phoneNumber`, `role`, and `profileImageUrl`.
 
-## Current Status
+### Validation Error
 
-🚧 **Learning / In Progress**
+An invalid email address can produce a `400 Bad Request` response with fields such as:
 
-The project is functional, but I am still actively learning and improving it.
+```json
+{
+  "type": "about:blank",
+  "title": "Validation Failed",
+  "status": 400,
+  "detail": "One or more fields failed validation",
+  "errors": {
+    "email": "Email must be a valid email address"
+  }
+}
+```
 
-I don't consider the current code to be the "final" version. As I learn more about Java and Spring Boot, I expect the architecture and implementation to change.
+Request DTOs validate required fields, email format, phone format, username rules, and password requirements. Unknown JSON properties are rejected. The exception handlers also map duplicate resources, invalid credentials, unavailable users, restricted accounts, and invalid token operations to HTTP error responses.
 
-## Why I made this project
+## Authentication and Security Behavior
 
-I wanted a project where I could learn Spring Boot by actually building something rather than only following tutorials.
+### Tokens and Accounts
 
-Instead of making only a basic CRUD application, I decided to keep adding features that helped me understand different parts of backend development.
+| Mechanism | Implemented behavior |
+| --- | --- |
+| Access token | Signed JWT; 15-minute lifetime |
+| Refresh token | Signed JWT; 7-day lifetime; hash stored in PostgreSQL |
+| Refresh rotation | Consumes the previous token and issues a replacement in the same token family |
+| Refresh-token reuse | Revokes the token family and returns an authentication error |
+| Refresh cookie | `HttpOnly`, `SameSite=Lax`, path `/api/auth`; `Secure=false` in the local configuration |
+| Email-verification token | Random token stored as a hash; 24-hour lifetime; single use |
+| Password-reset token | Random token stored as a hash; 30-minute lifetime; single use |
+| Passwords | Hashed with Argon2 |
+| Failed login attempts | 5 failures trigger a 15-minute lockout |
+| Account checks | Bearer authentication rechecks whether the user exists and is enabled/unlocked |
+| Profile completion | Protected access is restricted until username and phone are set; completion and photo endpoints remain available |
+| Token cleanup | Scheduled daily at 03:00 in the application's scheduler timezone |
 
-This repository is basically my way of documenting my progress while learning Java Spring Boot.
+Session revocation prevents further refreshes; it does not directly invalidate an already-issued access JWT. Access tokens remain subject to expiry and the live account checks performed by the JWT filter.
+
+Google login sets the refresh cookie and redirects to the configured frontend callback with `profileComplete`. The client can then call `/api/auth/refresh` to obtain an access token.
+
+The API uses Spring Security's stateless session policy, credentialed CORS for configured origins, and disabled CSRF protection in the current configuration. The supplied cookie and URL defaults target local HTTP development; review them when configuring HTTPS hosting.
+
+### Rate Limits
+
+| Route group | Bucket capacity / refill | Identity |
+| --- | --- | --- |
+| Login, signup, forgot password, reset password | 5 requests; refilled every 60 seconds for each route | IP address |
+| Refresh | 20 requests; continuous refill at 20 per 60 seconds | Authenticated user, falling back to IP |
+| `/api/users/**` | 100 requests; continuous refill at 100 per 60 seconds | Authenticated user, falling back to IP |
+| `/api/admin/**` | 100 requests; continuous refill at 100 per 60 seconds | Authenticated user, falling back to IP |
+| Global | 1,000 requests; continuous refill at 1,000 per 60 seconds | Shared within one application instance |
+
+Buckets are held in application memory. Redis is used for caching, not for distributing rate-limit counters. Rejected requests return **429 Too Many Requests** with a `Retry-After: 60` header.
+
+## Database and Caching
+
+PostgreSQL stores six main entity groups: users, linked OAuth accounts, refresh tokens, password-reset tokens, email-verification tokens, and audit logs.
+
+The project includes **nine Flyway migrations**:
+
+| Migration | Purpose |
+| --- | --- |
+| `V1__init.sql` | Initial users, OAuth accounts, refresh tokens, and audit logs |
+| `V2__seed_first_admin.sql` | Initial administrator seed |
+| `V3__add_login_lockout.sql` | Failed-attempt and lockout fields |
+| `V4__add_password_reset_tokens.sql` | Password-reset tokens |
+| `V5__add_email_verification.sql` | Email-verification state and tokens |
+| `V6__add_profile_image.sql` | Profile-image URL |
+| `V7__add_pending_email.sql` | Pending email changes |
+| `V8__add_refresh_token.sql` | Refresh-token family identifier |
+| `V9__add_session_metadata.sql` | IP address, user agent, and last-used time |
+
+Review the initial-admin seed when preparing your own installation; its stored password hash does not provide a documented plaintext login password. The normal signup endpoint creates a `USER`, and creating additional administrators through the API requires an existing `ADMIN`.
+
+Redis caches the `users` and `adminUsers` profile responses with a **10-minute default TTL**. Profile changes, admin updates, and email verification evict the relevant cached entries.
+
+## Testing
+
+The source contains the following automated test classes:
+
+| Test layer | Classes | Scope |
+| --- | ---: | --- |
+| Unit | 37 | Services, JWT/OAuth components, rate limiting, DTOs, exception handling, sessions, and supporting utilities |
+| Database / Redis integration | 8 | Schema, repositories, transactions, refresh concurrency, token uniqueness, search, and caching |
+| HTTP integration | 7 | Controller behavior, authentication, authorization, cookies, and session routes using MockMvc |
+| End-to-end | 6 | Registration, password, profile, session, and admin workflows over HTTP, plus environment prerequisites |
+| Application-context smoke | 1 | Spring Boot application startup |
+
+These are **test-class counts**, not executed-case counts or coverage percentages. Parameterized tests can execute multiple cases. Test outcomes should be taken from a fresh run of the selected suite.
+
+### Unit Tests
+
+```bash
+./mvnw '-Dtest=*Test' test
+```
+
+This selects the unit classes ending in `Test`, excluding the context test ending in `Tests` and integration classes ending in `IT`.
+
+### Database, HTTP Integration, and Context Tests
+
+Start the dedicated PostgreSQL and Redis services:
+
+```bash
+docker compose -f compose.integration.yml up -d --wait
+```
+
+Run the database/Redis integration classes, HTTP integration classes, and application-context test:
+
+```bash
+./mvnw '-Dtest=**/integration/*IT,**/httpIntegration/*IT,UsermanagementsystemApplicationTests' test
+```
+
+These test configurations use PostgreSQL on **15432** and Redis on **16379**. They use isolated test configuration rather than the development database settings.
+
+### End-to-End Tests
+
+```bash
+docker compose -f compose.e2e.yml up -d --wait
+./mvnw '-Dtest=**/e2e/*IT' test
+```
+
+The E2E environment uses PostgreSQL on **25432**, Redis on **26379**, and Mailpit SMTP on **11025**. Captured emails can be viewed at [http://localhost:18025](http://localhost:18025).
+
+The E2E application runs on a random local port. Cloudinary image operations and geolocation are mocked in this suite; email delivery is exercised through local Mailpit. It does not establish live Google or Cloudinary integration results.
+
+The integration and E2E configurations use disposable databases. Run them against their dedicated Compose services, not a development or production database.
+
+On Windows PowerShell, replace `./mvnw` with `.\mvnw.cmd`. The commands explicitly select `IT` classes because `pom.xml` uses Surefire and does not define a separate Failsafe execution.
+
+To stop the test environments:
+
+```bash
+docker compose -f compose.integration.yml down
+docker compose -f compose.e2e.yml down
+```
+
+A separate load-test application configuration is present at `load-tests/application-load.properties`. Load-test scripts and measured performance results are not documented here.
+
+## What I Learned
+
+- Structuring a Spring Boot application around controllers, services, repositories, DTOs, and security filters.
+- Implementing registration, verification, recovery, OAuth login, and refresh-token lifecycles.
+- Working with relational data, JPA, transactions, and Flyway migrations.
+- Using Redis caching with explicit invalidation after relevant changes.
+- Validating requests and returning structured errors.
+- Testing behavior at the unit, persistence, HTTP, and workflow levels.
+- Separating development, integration, and E2E environments with configuration and Docker Compose.
+- Documenting APIs through OpenAPI annotations and concrete request/response examples.
+
+I used **Claude as a learning assistant** while working through implementation and backend concepts. This project reflects the Java and Spring experience I developed as I moved toward enterprise backend API development.
 
 ## Author
 
-**Min Thant Tun**
-
-Learning Java + Spring Boot one project at a time.
-
----
-
-### Note
-
-This is a personal learning project. Some implementation decisions may change as I learn more about Spring Boot, Spring Security, backend architecture, and application security.
+**[Min Thant Tun](https://github.com/Min-Thant794)**  
+Computer Science graduate focused on backend development with Java and Spring Boot.
