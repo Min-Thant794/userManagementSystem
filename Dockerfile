@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM eclipse-temurin:25-jdk-jammy AS build
 RUN java -version
 
 WORKDIR /workspace
@@ -10,7 +10,7 @@ COPY src/main ./src/main
 RUN --mount=type=cache,target=/root/.m2 \
     sh ./mvnw -B -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:21-jre-jammy AS runtime
+FROM eclipse-temurin:25-jre-jammy AS runtime
 RUN java -version
 
 RUN apt-get update \
